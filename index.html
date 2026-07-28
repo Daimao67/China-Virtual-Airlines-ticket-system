@@ -116,7 +116,7 @@
                 </div>
                 <div class="relative z-10 max-w-2xl space-y-4">
                     <span class="inline-flex items-center space-x-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs px-3 py-1 rounded-full font-semibold uppercase tracking-wider">
-                        <span class="w-2 h-2 bg-emerald-400 rounded-full animate-ping mr-1"></span> 全網共通雲端資料庫已連線
+                        <span class="w-2 h-2 bg-emerald-400 rounded-full animate-ping mr-1"></span> 全網共通雲端資料庫連線中
                     </span>
                     <h1 class="text-3xl sm:text-5xl font-black leading-tight">致敬飛行熱情<br>智慧一體化 Virtual Flight</h1>
                     <p class="text-slate-300 text-sm sm:text-base">中華虛擬航空（CVA）提供全網即時同步劃位、線上訂票與雲端 Check-in 服務，感受無縫式的虛擬航空旅程。</p>
@@ -164,24 +164,31 @@
                 <div class="lg:col-span-2 bg-white rounded-2xl p-6 shadow-md border border-slate-100">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="font-bold text-xl flex items-center space-x-2">
-                            <i class="fa-solid fa-bullhorn text-cva-gold"></i><span>CVA 最新航線與系統公告</span>
+                            <i class="fa-solid fa-bullhorn text-cva-gold"></i><span>CVA 營運與服務公告</span>
                         </h2>
-                        <span class="text-xs text-slate-400">即時更新</span>
+                        <span class="text-xs text-slate-400">即時同步中</span>
                     </div>
                     <div class="space-y-4 text-sm text-slate-600">
                         <div class="p-4 bg-slate-50 rounded-xl border-l-4 border-cva-blue">
                             <div class="flex justify-between font-bold text-slate-800 mb-1">
-                                <span>全新 A350-900 旗艦客機投入營運</span>
-                                <span class="text-xs text-slate-400">2026-07-28</span>
+                                <span>中華虛擬航空智慧訂票與劃位一體化系統正式上線</span>
+                                <span class="text-xs text-slate-400">系統公告</span>
                             </div>
-                            <p>CVA 桃園 (TPE) 至 東京羽田 (HND) 與 洛杉磯 (LAX) 航線正式開通全線上選位與 Check-in 服務。</p>
+                            <p class="text-xs leading-relaxed">全站已啟用全網雲端即時同步機制，旅客於完成航班搜尋與自主劃位後，系統將自動核發 6 碼訂位代號（PNR）與電子機票。劃位座位由系統即時鎖定，保障全網資料一致性。</p>
                         </div>
                         <div class="p-4 bg-slate-50 rounded-xl border-l-4 border-cva-gold">
                             <div class="flex justify-between font-bold text-slate-800 mb-1">
-                                <span>劃位與報到安全升級提醒</span>
-                                <span class="text-xs text-slate-400">2026-07-25</span>
+                                <span>線上 Check-in 報到須知與開放說明</span>
+                                <span class="text-xs text-slate-400">報到提示</span>
                             </div>
-                            <p>系統已啟用全網雲端即時鎖死機制，若未預訂機票請勿嘗試辦理 Check-in，每張機票限報到乙次。</p>
+                            <p class="text-xs leading-relaxed">辦理線上 Check-in 須先完成航班訂票。未完成訂購或該航班經管理員設定關櫃者，將無法辦理報到。報到成功後系統將核發電子登機證（Boarding Pass）及獨立通關驗證碼。</p>
+                        </div>
+                        <div class="p-4 bg-slate-50 rounded-xl border-l-4 border-emerald-600">
+                            <div class="flex justify-between font-bold text-slate-800 mb-1">
+                                <span>無會員快速查詢服務說明</span>
+                                <span class="text-xs text-slate-400">操作說明</span>
+                            </div>
+                            <p class="text-xs leading-relaxed">「我的訂單」與「線上 Check-in」功能均採「旅客姓名 ＋ 訂位代號（PNR）」直接調閱，無需註冊或登入會員即可於任何裝置即時查詢個人行程與劃位狀態。</p>
                         </div>
                     </div>
                 </div>
@@ -425,13 +432,18 @@
 
                 <!-- 航班建立與管理 -->
                 <div class="bg-white p-6 rounded-2xl shadow-md border border-slate-100 space-y-6">
-                    <div class="flex justify-between items-center">
+                    <div class="flex flex-wrap justify-between items-center gap-2">
                         <h3 class="font-bold text-lg text-slate-800 flex items-center space-x-2">
                             <i class="fa-solid fa-plane text-cva-blue"></i><span>航班發布與管理</span>
                         </h3>
-                        <button onclick="toggleAddFlightModal(true)" class="bg-cva-blue text-white text-xs font-bold px-4 py-2 rounded-xl shadow hover:bg-slate-800 transition">
-                            <i class="fa-solid fa-plus"></i> 新增虛擬航班
-                        </button>
+                        <div class="flex space-x-2">
+                            <button onclick="bootstrapDefaultFlights()" class="bg-amber-100 text-amber-800 hover:bg-amber-200 text-xs font-bold px-3 py-2 rounded-xl transition">
+                                <i class="fa-solid fa-rotate-left"></i> 載入預設示範航班
+                            </button>
+                            <button onclick="toggleAddFlightModal(true)" class="bg-cva-blue text-white text-xs font-bold px-4 py-2 rounded-xl shadow hover:bg-slate-800 transition">
+                                <i class="fa-solid fa-plus"></i> 新增虛擬航班
+                            </button>
+                        </div>
                     </div>
 
                     <div class="overflow-x-auto">
@@ -559,51 +571,51 @@
             <h3 class="text-xl font-bold text-cva-blue border-b pb-2 flex items-center space-x-2">
                 <i class="fa-solid fa-plane-circle-plus"></i><span>建立全新虛擬航班</span>
             </h3>
-            <form onsubmit="handleCreateFlight(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <form id="create-flight-form" onsubmit="handleCreateFlight(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                 <div>
                     <label class="block font-bold mb-1">航班編號 (Flight No)</label>
-                    <input type="text" id="m-flight-no" placeholder="例：CI100" required class="w-full p-2.5 border rounded-xl">
+                    <input type="text" id="m-flight-no" placeholder="例：CI100" required class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cva-blue focus:outline-none">
                 </div>
                 <div>
                     <label class="block font-bold mb-1">執飛機型 (Aircraft)</label>
-                    <input type="text" id="m-aircraft" placeholder="例：Airbus A350-900" required class="w-full p-2.5 border rounded-xl">
+                    <input type="text" id="m-aircraft" placeholder="例：Airbus A350-900" required class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cva-blue focus:outline-none">
                 </div>
                 <div>
                     <label class="block font-bold mb-1">出發機場 (Departure)</label>
-                    <input type="text" id="m-dep" placeholder="例：RCTP / 台北桃園" required class="w-full p-2.5 border rounded-xl">
+                    <input type="text" id="m-dep" placeholder="例：RCTP / 台北桃園" required class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cva-blue focus:outline-none">
                 </div>
                 <div>
                     <label class="block font-bold mb-1">抵達機場 (Arrival)</label>
-                    <input type="text" id="m-arr" placeholder="例：RJTT / 東京羽田" required class="w-full p-2.5 border rounded-xl">
+                    <input type="text" id="m-arr" placeholder="例：RJTT / 東京羽田" required class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cva-blue focus:outline-none">
                 </div>
                 <div>
                     <label class="block font-bold mb-1">出發日期</label>
-                    <input type="date" id="m-date" required class="w-full p-2.5 border rounded-xl">
+                    <input type="date" id="m-date" required class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cva-blue focus:outline-none">
                 </div>
                 <div>
                     <label class="block font-bold mb-1">起飛時間 (Departure Time)</label>
-                    <input type="time" id="m-dep-time" required class="w-full p-2.5 border rounded-xl">
+                    <input type="time" id="m-dep-time" required class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cva-blue focus:outline-none">
                 </div>
                 <div>
                     <label class="block font-bold mb-1">抵達時間 (Arrival Time)</label>
-                    <input type="time" id="m-arr-time" required class="w-full p-2.5 border rounded-xl">
+                    <input type="time" id="m-arr-time" required class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cva-blue focus:outline-none">
                 </div>
                 <div>
                     <label class="block font-bold mb-1">登機門 (Gate)</label>
-                    <input type="text" id="m-gate" placeholder="例：A9" required class="w-full p-2.5 border rounded-xl">
+                    <input type="text" id="m-gate" placeholder="例：A9" required class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cva-blue focus:outline-none">
                 </div>
                 <div>
                     <label class="block font-bold mb-1">標準票價 (TWD)</label>
-                    <input type="number" id="m-price" placeholder="例：12500" required class="w-full p-2.5 border rounded-xl">
+                    <input type="number" id="m-price" placeholder="例：12500" min="0" required class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cva-blue focus:outline-none">
                 </div>
                 <div>
                     <label class="block font-bold mb-1">總座位容量 (Seats)</label>
-                    <input type="number" id="m-capacity" value="24" readonly class="w-full p-2.5 border rounded-xl bg-slate-100 text-slate-500">
+                    <input type="number" id="m-capacity" value="24" readonly class="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-100 text-slate-500">
                     <span class="text-[10px] text-slate-400">標準配置固定為 24 席 (4x6)</span>
                 </div>
                 <div class="md:col-span-2 flex justify-end space-x-3 pt-4 border-t">
-                    <button type="button" onclick="toggleAddFlightModal(false)" class="px-5 py-2.5 rounded-xl border text-slate-600 font-bold">取消</button>
-                    <button type="submit" class="px-6 py-2.5 rounded-xl bg-cva-blue text-white font-bold shadow hover:bg-slate-800">建立並發布</button>
+                    <button type="button" onclick="toggleAddFlightModal(false)" class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-bold hover:bg-slate-50">取消</button>
+                    <button type="submit" class="px-6 py-2.5 rounded-xl bg-cva-blue text-white font-bold shadow hover:bg-slate-800 transition">建立並發布</button>
                 </div>
             </form>
         </div>
@@ -637,7 +649,6 @@
             collection, 
             doc, 
             setDoc, 
-            getDocs, 
             onSnapshot, 
             updateDoc, 
             deleteDoc 
@@ -694,17 +705,11 @@
 
             // 1. 航班資料全網監聽 (Public Data)
             const flightsRef = collection(db, 'artifacts', appId, 'public', 'data', 'flights');
-            onSnapshot(flightsRef, async (snapshot) => {
+            onSnapshot(flightsRef, (snapshot) => {
                 flightsData = [];
                 snapshot.forEach(doc => {
                     flightsData.push({ id: doc.id, ...doc.data() });
                 });
-
-                // 若雲端完全無航班，自動為全網寫入預設航線
-                if (flightsData.length === 0) {
-                    await bootstrapDefaultFlights();
-                    return;
-                }
 
                 renderFlights();
                 renderHomeFlightPreview();
@@ -722,8 +727,8 @@
             }, (error) => showToast("訂單雲端資料同步失敗", "error"));
         }
 
-        // 自動寫入全網初始化預設航班 (首次啟動時執行)
-        async function bootstrapDefaultFlights() {
+        // 手機與管理員可手動寫入示範航班
+        window.bootstrapDefaultFlights = async function() {
             const today = new Date().toISOString().split('T')[0];
             const defaultFlights = [
                 {
@@ -779,11 +784,17 @@
                 }
             ];
 
-            for (const f of defaultFlights) {
-                const flightRef = doc(db, 'artifacts', appId, 'public', 'data', 'flights', f.id);
-                await setDoc(flightRef, f);
+            try {
+                for (const f of defaultFlights) {
+                    const flightRef = doc(db, 'artifacts', appId, 'public', 'data', 'flights', f.id);
+                    await setDoc(flightRef, f);
+                }
+                showToast("預設示範航班已寫入雲端", "success");
+            } catch (err) {
+                console.error(err);
+                showToast("載入示範航班失敗", "error");
             }
-        }
+        };
 
         // --- Toast 提示功能 ---
         window.showToast = function(msg, type = 'info') {
@@ -818,7 +829,7 @@
         function renderHomeFlightPreview() {
             const container = document.getElementById('home-flight-preview');
             if (!flightsData.length) {
-                container.innerHTML = `<div class="text-center text-slate-400 py-4 text-xs">目前無即時航班資訊</div>`;
+                container.innerHTML = `<div class="text-center text-slate-400 py-4 text-xs">目前雲端資料庫尚無航班</div>`;
                 return;
             }
             container.innerHTML = flightsData.slice(0, 3).map(f => `
@@ -853,7 +864,7 @@
             });
 
             if (!filtered.length) {
-                container.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-400">查無符合可販售之航班，請重新選擇出發與抵達機場。</div>`;
+                container.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-400">查無符合可販售之航班，請重新選擇條件或於管理後台新增航班。</div>`;
                 return;
             }
 
@@ -1306,7 +1317,7 @@
 
             const flightTbody = document.getElementById('admin-flight-table-body');
             if (!flightsData.length) {
-                flightTbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400">目前資料庫無任何航班，請點擊新增。</td></tr>`;
+                flightTbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400">目前資料庫無任何航班，請點擊新增或載入預設航班。</td></tr>`;
             } else {
                 flightTbody.innerHTML = flightsData.map(f => {
                     const occupiedCount = (f.occupiedSeats || []).length;
@@ -1398,22 +1409,41 @@
         // --- 管理員操作功能 ---
         window.toggleAddFlightModal = function(show) {
             document.getElementById('add-flight-modal').classList.toggle('hidden', !show);
+            if (!show) {
+                document.getElementById('create-flight-form').reset();
+            }
         };
 
         window.handleCreateFlight = async function(e) {
             e.preventDefault();
+            
+            const flightNo = document.getElementById('m-flight-no').value.trim().toUpperCase();
+            const aircraft = document.getElementById('m-aircraft').value.trim();
+            const dep = document.getElementById('m-dep').value.trim();
+            const arr = document.getElementById('m-arr').value.trim();
+            const date = document.getElementById('m-date').value;
+            const depTime = document.getElementById('m-dep-time').value;
+            const arrTime = document.getElementById('m-arr-time').value;
+            const gate = document.getElementById('m-gate').value.trim().toUpperCase();
+            const price = Number(document.getElementById('m-price').value);
+
+            if (!flightNo || !dep || !arr || !date || !depTime || !arrTime) {
+                showToast("請完整填寫所有欄位資訊", "error");
+                return;
+            }
+
             const flightId = `fl_${Date.now()}`;
             const newFlight = {
                 id: flightId,
-                flightNo: document.getElementById('m-flight-no').value.trim().toUpperCase(),
-                aircraft: document.getElementById('m-aircraft').value.trim(),
-                dep: document.getElementById('m-dep').value.trim(),
-                arr: document.getElementById('m-arr').value.trim(),
-                date: document.getElementById('m-date').value,
-                depTime: document.getElementById('m-dep-time').value,
-                arrTime: document.getElementById('m-arr-time').value,
-                gate: document.getElementById('m-gate').value.trim().toUpperCase(),
-                price: Number(document.getElementById('m-price').value),
+                flightNo: flightNo,
+                aircraft: aircraft,
+                dep: dep,
+                arr: arr,
+                date: date,
+                depTime: depTime,
+                arrTime: arrTime,
+                gate: gate,
+                price: price,
                 capacity: 24,
                 occupiedSeats: [],
                 isSelling: true,
@@ -1425,10 +1455,10 @@
                 const flightRef = doc(db, 'artifacts', appId, 'public', 'data', 'flights', flightId);
                 await setDoc(flightRef, newFlight);
                 toggleAddFlightModal(false);
-                showToast("全新虛擬航班已寫入雲端並發布", "success");
+                showToast("全新虛擬航班已成功發布！", "success");
             } catch (err) {
-                console.error(err);
-                showToast("發布失敗，請重試", "error");
+                console.error("建立航班失敗:", err);
+                showToast("建立失敗，請確認網路連線", "error");
             }
         };
 
@@ -1456,7 +1486,7 @@
             try {
                 const flightRef = doc(db, 'artifacts', appId, 'public', 'data', 'flights', flightId);
                 await deleteDoc(flightRef);
-                showToast("航班已刪除");
+                showToast("航班已從全網雲端成功刪除！", "success");
             } catch (err) {
                 showToast("刪除失敗", "error");
             }
