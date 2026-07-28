@@ -1,747 +1,671 @@
 <!DOCTYPE html>
-<html lang="zh-TW" class="dark">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>中華虛擬航空 CVA - 智慧訂票 & Check-in 全網雲端一體化系統</title>
+    <title>中華虛擬航空 China Virtual Airlines | 智慧訂票 & Check-in 系統</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
+    <!-- FontAwesome icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts Inter & Noto Sans TC -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <!-- QR Code & Barcode Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"></script>
+
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
                         cva: {
-                            50: '#f0f7ff',
-                            100: '#e0effe',
-                            500: '#0284c7',
-                            600: '#0369a1',
-                            800: '#075985',
-                            900: '#0c4a6e',
-                            dark: '#080d1a',
-                            card: '#0f172a',
-                            accent: '#38bdf8'
+                            blue: '#002B49',
+                            gold: '#C5A059',
+                            red: '#8B0000',
+                            light: '#F4F7F9',
+                            accent: '#00529B'
                         }
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
                     }
                 }
             }
         }
     </script>
     <style>
-        body {
-            background-color: #080d1a;
-            color: #f1f5f9;
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
         }
-        .fuselage {
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-            border: 3px solid #334155;
-            border-radius: 90px 90px 30px 30px;
-            position: relative;
+        .seat {
+            transition: all 0.2s ease;
         }
-        .fuselage::before {
-            content: '▲ 機頭 AIRCRAFT NOSE ▲';
-            position: absolute;
-            top: -22px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 11px;
-            letter-spacing: 2px;
-            color: #38bdf8;
-            font-weight: 700;
-        }
-        .barcode-strip {
-            background: repeating-linear-gradient(
-                90deg,
-                #000,
-                #000 2px,
-                #fff 2px,
-                #fff 4px,
-                #000 4px,
-                #000 7px
-            );
-        }
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #080d1a;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 3px;
-        }
+        .seat.available { background-color: #E2E8F0; border-color: #94A3B8; color: #334155; }
+        .seat.available:hover { background-color: #93C5FD; cursor: pointer; }
+        .seat.selected { background-color: #2563EB; color: white; border-color: #1D4ED8; }
+        .seat.occupied { background-color: #EF4444; color: white; cursor: not-allowed; opacity: 0.6; }
+        .seat.checked-in { background-color: #10B981; color: white; cursor: not-allowed; }
     </style>
 </head>
-<body class="bg-cva-dark text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-cva-500 selection:text-white">
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col justify-between">
 
-    <!-- Navigation Header -->
-    <header class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 shadow-xl">
+    <!-- 頂部導航欄 -->
+    <header class="bg-cva-blue text-white shadow-lg sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <!-- Brand Logo -->
-                <div class="flex items-center space-x-3 cursor-pointer" onclick="app.navigate('home')">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cva-600 to-sky-400 flex items-center justify-center shadow-lg shadow-sky-500/20">
-                        <i class="fa-solid fa-plane-up text-white text-xl"></i>
+            <div class="flex items-center justify-between h-20">
+                <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('home')">
+                    <div class="bg-cva-gold text-cva-blue p-2.5 rounded-full font-black text-xl shadow-md">
+                        <i class="fa-solid font-bold fa-plane"></i>
                     </div>
                     <div>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-base sm:text-lg font-bold tracking-wider text-white">中華虛擬航空</span>
-                            <span id="sync-status-badge" class="px-2 py-0.5 text-[10px] font-semibold bg-amber-500/20 text-amber-300 rounded-full border border-amber-500/30 animate-pulse">連線中...</span>
-                        </div>
-                        <span class="text-[10px] block text-sky-400 font-medium tracking-widest -mt-0.5">CHINA VIRTUAL AIRLINES</span>
+                        <div class="font-black text-xl tracking-wider text-white">中華虛擬航空</div>
+                        <div class="text-xs text-cva-gold tracking-widest uppercase">China Virtual Airlines</div>
                     </div>
                 </div>
 
-                <!-- Main Desktop Navigation -->
-                <nav class="hidden md:flex space-x-1" id="main-nav-links">
-                    <button onclick="app.navigate('home')" class="nav-btn px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-800 transition flex items-center space-x-2 text-slate-200">
-                        <i class="fa-solid fa-magnifying-glass text-sky-400"></i>
-                        <span>搜尋航班</span>
+                <!-- 導航功能選項 -->
+                <nav class="hidden md:flex space-x-1 lg:space-x-4">
+                    <button onclick="switchTab('home')" class="nav-btn px-3 py-2 rounded-lg font-medium text-sm hover:bg-white/10 transition flex items-center space-x-1">
+                        <i class="fa-solid fa-house"></i> <span>首頁</span>
                     </button>
-                    <button onclick="app.navigate('my-bookings')" class="nav-btn px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-800 transition flex items-center space-x-2 text-slate-200">
-                        <i class="fa-solid fa-ticket text-sky-400"></i>
-                        <span>我的訂單</span>
+                    <button onclick="switchTab('search')" class="nav-btn px-3 py-2 rounded-lg font-medium text-sm hover:bg-white/10 transition flex items-center space-x-1">
+                        <i class="fa-solid fa-magnifying-glass"></i> <span>搜尋航班</span>
                     </button>
-                    <button onclick="app.navigate('checkin')" class="nav-btn px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-800 transition flex items-center space-x-2 text-slate-200">
-                        <i class="fa-solid fa-passport text-sky-400"></i>
-                        <span>線上 Check-in</span>
+                    <button onclick="switchTab('my-orders')" class="nav-btn px-3 py-2 rounded-lg font-medium text-sm hover:bg-white/10 transition flex items-center space-x-1">
+                        <i class="fa-solid fa-ticket"></i> <span>我的訂單</span>
                     </button>
-                    <button onclick="app.navigate('announcements')" class="nav-btn px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-800 transition flex items-center space-x-2 text-slate-200">
-                        <i class="fa-solid fa-bullhorn text-sky-400"></i>
-                        <span>最新公告</span>
+                    <button onclick="switchTab('checkin')" class="nav-btn px-3 py-2 rounded-lg font-medium text-sm hover:bg-white/10 transition flex items-center space-x-1">
+                        <i class="fa-solid fa-passport"></i> <span>Check-in 報到</span>
+                    </button>
+                    <button onclick="openAdminModal()" class="nav-btn bg-cva-gold/20 text-cva-gold border border-cva-gold/40 px-3 py-2 rounded-lg font-medium text-sm hover:bg-cva-gold hover:text-cva-blue transition flex items-center space-x-1">
+                        <i class="fa-solid fa-user-shield"></i> <span>管理員後台</span>
                     </button>
                 </nav>
 
-                <!-- Admin Action Button -->
-                <div class="hidden md:flex items-center space-x-2">
-                    <button id="admin-nav-btn" onclick="app.openAdminAuthModal()" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 text-slate-200 hover:bg-sky-600 hover:text-white border border-slate-700 transition flex items-center space-x-2 shadow-sm">
-                        <i class="fa-solid fa-user-shield text-sky-400"></i>
-                        <span id="admin-nav-label">管理員登入</span>
-                    </button>
-                </div>
-
-                <!-- Mobile Menu Button -->
+                <!-- 手機版選單按鈕 -->
                 <div class="md:hidden flex items-center">
-                    <button onclick="app.toggleMobileMenu()" class="text-slate-300 hover:text-white p-2">
-                        <i class="fa-solid fa-bars text-xl"></i>
+                    <button onclick="toggleMobileMenu()" class="text-gray-300 hover:text-white p-2">
+                        <i class="fa-solid fa-bars text-2xl"></i>
                     </button>
                 </div>
             </div>
         </div>
-
-        <!-- Mobile Drawer Menu -->
-        <div id="mobile-menu" class="hidden md:hidden bg-slate-900 border-b border-slate-800 px-4 pt-2 pb-4 space-y-2">
-            <button onclick="app.navigate('home'); app.toggleMobileMenu()" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800">搜尋航班</button>
-            <button onclick="app.navigate('my-bookings'); app.toggleMobileMenu()" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800">我的訂單</button>
-            <button onclick="app.navigate('checkin'); app.toggleMobileMenu()" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800">線上 Check-in</button>
-            <button onclick="app.navigate('announcements'); app.toggleMobileMenu()" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800">最新公告</button>
-            <div class="pt-2 border-t border-slate-800">
-                <button onclick="app.openAdminAuthModal(); app.toggleMobileMenu()" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-sky-400 hover:bg-slate-800">管理員登入 / 控制台</button>
-            </div>
+        <!-- 手機版展開選單 -->
+        <div id="mobile-menu" class="hidden md:hidden bg-cva-blue border-t border-slate-700 px-4 pt-2 pb-4 space-y-2">
+            <button onclick="switchTab('home')" class="w-full text-left px-3 py-2 rounded text-slate-200"><i class="fa-solid fa-house w-6"></i>首頁</button>
+            <button onclick="switchTab('search')" class="w-full text-left px-3 py-2 rounded text-slate-200"><i class="fa-solid fa-magnifying-glass w-6"></i>搜尋航班</button>
+            <button onclick="switchTab('my-orders')" class="w-full text-left px-3 py-2 rounded text-slate-200"><i class="fa-solid fa-ticket w-6"></i>我的訂單</button>
+            <button onclick="switchTab('checkin')" class="w-full text-left px-3 py-2 rounded text-slate-200"><i class="fa-solid fa-passport w-6"></i>Check-in 報到</button>
+            <button onclick="openAdminModal()" class="w-full text-left px-3 py-2 rounded text-cva-gold font-bold"><i class="fa-solid fa-user-shield w-6"></i>管理員後台</button>
         </div>
     </header>
 
-    <!-- Main Content Container -->
-    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        
-        <!-- ================= PAGE 1: HOME & SEARCH ================= -->
-        <div id="view-home" class="view-panel space-y-8">
+    <!-- 訊息提示模組 (Toast Alert) -->
+    <div id="toast-container" class="fixed top-24 right-5 z-50 flex flex-col space-y-2 max-w-sm"></div>
+
+    <!-- 主要內容區域 -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full">
+
+        <!-- 1. 首頁 (Home Tab) -->
+        <section id="tab-home" class="tab-content space-y-8">
             <!-- Hero Banner -->
-            <div class="relative rounded-3xl overflow-hidden bg-gradient-to-r from-slate-900 via-cva-900 to-slate-900 border border-slate-800 shadow-2xl p-6 sm:p-10">
-                <div class="absolute -right-10 -bottom-10 opacity-10 text-slate-100 pointer-events-none">
-                    <i class="fa-solid fa-plane text-[260px]"></i>
+            <div class="relative bg-gradient-to-r from-cva-blue via-slate-900 to-cva-accent rounded-3xl p-8 sm:p-12 text-white shadow-2xl overflow-hidden">
+                <div class="absolute right-0 bottom-0 opacity-10 translate-x-10 translate-y-10">
+                    <i class="fa-solid fa-plane-departure text-[300px]"></i>
                 </div>
-                <div class="relative z-10 max-w-2xl">
-                    <span class="px-3 py-1 text-xs font-semibold tracking-wide uppercase bg-sky-500/20 text-sky-300 rounded-full border border-sky-500/30">CVA Real-time Cloud System</span>
-                    <h1 class="text-3xl sm:text-5xl font-extrabold text-white mt-3 tracking-tight">翱翔天際，雲端即時同步</h1>
-                    <p class="text-slate-300 text-sm sm:text-base mt-2">完全由管理員於後台即時建立之動態航班系統。無預設假資料，劃位與 Check-in 全網毫秒同步。</p>
-                </div>
-
-                <!-- Flight Search Card -->
-                <div class="mt-8 bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-700/60 p-5 sm:p-6 shadow-xl">
-                    <form id="search-flight-form" onsubmit="app.handleSearchFlights(event)" class="space-y-4">
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            <div>
-                                <label class="block text-xs font-medium text-slate-400 mb-1">航程類型</label>
-                                <select id="search-trip-type" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-sky-500">
-                                    <option value="one-way">單程 (One Way)</option>
-                                    <option value="round-trip">來回 (Round Trip)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-slate-400 mb-1">艙等</label>
-                                <select id="search-cabin" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-sky-500">
-                                    <option value="all">所有艙等</option>
-                                    <option value="經濟艙">經濟艙 (Economy)</option>
-                                    <option value="商務艙">商務艙 (Business)</option>
-                                </select>
-                            </div>
-                            <div class="col-span-2">
-                                <label class="block text-xs font-medium text-slate-400 mb-1">旅客人數</label>
-                                <select id="search-passengers" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-sky-500">
-                                    <option value="1">1 位旅客</option>
-                                    <option value="2">2 位旅客</option>
-                                    <option value="3">3 位旅客</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                            <div>
-                                <label class="block text-xs font-medium text-slate-400 mb-1"><i class="fa-solid fa-plane-departure text-sky-400 mr-1"></i>出發地點</label>
-                                <input type="text" id="search-from" placeholder="輸入出發地 (如 TPE)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-slate-400 mb-1"><i class="fa-solid fa-plane-arrival text-sky-400 mr-1"></i>目的地點</label>
-                                <input type="text" id="search-to" placeholder="輸入目的地 (如 NRT)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-slate-400 mb-1"><i class="fa-regular fa-calendar text-sky-400 mr-1"></i>出發日期</label>
-                                <input type="date" id="search-date" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500">
-                            </div>
-                            <div class="flex items-end">
-                                <button type="submit" class="w-full bg-gradient-to-r from-sky-500 to-cva-600 hover:from-sky-400 hover:to-cva-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-sky-500/25 transition flex items-center justify-center space-x-2">
-                                    <i class="fa-solid fa-magnifying-glass"></i>
-                                    <span>搜尋即時航班</span>
-                                </button>
-                            </div>
-                        </div>
-                    </form>
+                <div class="relative z-10 max-w-2xl space-y-4">
+                    <span class="inline-block bg-cva-gold/20 text-cva-gold border border-cva-gold/30 text-xs px-3 py-1 rounded-full font-semibold uppercase tracking-wider">即時雲端數據連線</span>
+                    <h1 class="text-3xl sm:text-5xl font-black leading-tight">致敬飛行熱情<br>智慧一體化 Virtual Flight</h1>
+                    <p class="text-slate-300 text-sm sm:text-base">中華虛擬航空（CVA）提供即時訂票、線上自動劃位鎖定與零等待 Check-in 服務，感受無縫式的虛擬航空旅程。</p>
+                    <div class="pt-4 flex flex-wrap gap-4">
+                        <button onclick="switchTab('search')" class="bg-cva-gold text-cva-blue font-bold px-6 py-3 rounded-xl shadow-lg hover:bg-yellow-400 transition flex items-center space-x-2">
+                            <i class="fa-solid fa-magnifying-glass"></i><span>立即搜尋航班</span>
+                        </button>
+                        <button onclick="switchTab('checkin')" class="bg-white/10 border border-white/20 text-white font-bold px-6 py-3 rounded-xl hover:bg-white/20 transition flex items-center space-x-2">
+                            <i class="fa-solid fa-passport"></i><span>辦理 Check-in</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Search Results Section -->
-            <div id="search-results-section" class="space-y-4">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-xl font-bold text-white flex items-center space-x-2">
-                        <i class="fa-solid fa-plane-flight text-sky-400"></i>
-                        <span>雲端資料庫即時航班</span>
+            <!-- 快捷模組 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div onclick="switchTab('search')" class="bg-white p-6 rounded-2xl shadow-md border border-slate-100 hover:shadow-xl transition cursor-pointer group">
+                    <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center text-xl mb-4 group-hover:scale-110 transition">
+                        <i class="fa-solid fa-plane-up"></i>
+                    </div>
+                    <h3 class="font-bold text-lg mb-1">航班查詢與劃位</h3>
+                    <p class="text-slate-500 text-sm">瀏覽全航線最新實時時刻表，自主劃位與即時確認。</p>
+                </div>
+
+                <div onclick="switchTab('my-orders')" class="bg-white p-6 rounded-2xl shadow-md border border-slate-100 hover:shadow-xl transition cursor-pointer group">
+                    <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center text-xl mb-4 group-hover:scale-110 transition">
+                        <i class="fa-solid fa-receipt"></i>
+                    </div>
+                    <h3 class="font-bold text-lg mb-1">我的訂單 (PNR)</h3>
+                    <p class="text-slate-500 text-sm">免登入！輸入姓名與 PNR 即可調閱電子機票與最新動態。</p>
+                </div>
+
+                <div onclick="switchTab('checkin')" class="bg-white p-6 rounded-2xl shadow-md border border-slate-100 hover:shadow-xl transition cursor-pointer group">
+                    <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center text-xl mb-4 group-hover:scale-110 transition">
+                        <i class="fa-solid fa-qrcode"></i>
+                    </div>
+                    <h3 class="font-bold text-lg mb-1">線上 Check-in</h3>
+                    <p class="text-slate-500 text-sm">開櫃時間內快速完成報到，領取專屬電子 Boarding Pass。</p>
+                </div>
+            </div>
+
+            <!-- 最新公告 & 實時熱門航班資訊 -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- 最新公告 -->
+                <div class="lg:col-span-2 bg-white rounded-2xl p-6 shadow-md border border-slate-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="font-bold text-xl flex items-center space-x-2">
+                            <i class="fa-solid fa-bullhorn text-cva-gold"></i><span>CVA 最新航線與系統公告</span>
+                        </h2>
+                        <span class="text-xs text-slate-400">即時更新</span>
+                    </div>
+                    <div class="space-y-4 text-sm text-slate-600">
+                        <div class="p-4 bg-slate-50 rounded-xl border-l-4 border-cva-blue">
+                            <div class="flex justify-between font-bold text-slate-800 mb-1">
+                                <span>全新 A350-900 旗艦客機投入營運</span>
+                                <span class="text-xs text-slate-400">2026-07-28</span>
+                            </div>
+                            <p>CVA 桃園 (TPE) 至 東京羽田 (HND) 與 洛杉磯 (LAX) 航線正式開通全線上選位與 Check-in 服務。</p>
+                        </div>
+                        <div class="p-4 bg-slate-50 rounded-xl border-l-4 border-cva-gold">
+                            <div class="flex justify-between font-bold text-slate-800 mb-1">
+                                <span>劃位與報到安全升級提醒</span>
+                                <span class="text-xs text-slate-400">2026-07-25</span>
+                            </div>
+                            <p>系統已啟用雲端即時防鎖死機制，若未預訂機票請勿嘗試辦理 Check-in，每張機票限報到乙次。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 實時熱門航班狀態 -->
+                <div class="bg-white rounded-2xl p-6 shadow-md border border-slate-100">
+                    <h2 class="font-bold text-xl mb-4 flex items-center space-x-2">
+                        <i class="fa-solid fa-clock text-cva-blue"></i><span>即時動態熱門航班</span>
                     </h2>
-                    <span id="flight-count-badge" class="text-xs px-3 py-1 bg-slate-800 text-slate-300 rounded-full border border-slate-700">讀取中...</span>
-                </div>
-
-                <!-- Flight Cards Container -->
-                <div id="flights-container" class="space-y-4">
-                    <!-- Dynamic Flight Cards loaded from Firestore -->
+                    <div id="home-flight-preview" class="space-y-3">
+                        <div class="text-center py-8 text-slate-400 text-sm">載入雲端航班中...</div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- ================= PAGE 2: BOOKING WIZARD ================= -->
-        <div id="view-booking-wizard" class="view-panel hidden space-y-6">
-            <!-- Progress Steps Bar -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex justify-around items-center">
-                <div id="step-node-1" class="flex items-center space-x-2 text-sky-400 font-bold text-sm">
-                    <span class="w-7 h-7 rounded-full bg-sky-500 text-slate-950 flex items-center justify-center font-extrabold text-xs">1</span>
-                    <span class="hidden sm:inline">旅客資料</span>
-                </div>
-                <div class="w-12 h-0.5 bg-slate-800"></div>
-                <div id="step-node-2" class="flex items-center space-x-2 text-slate-500 font-medium text-sm">
-                    <span class="w-7 h-7 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center font-extrabold text-xs">2</span>
-                    <span class="hidden sm:inline">劃位選座</span>
-                </div>
-                <div class="w-12 h-0.5 bg-slate-800"></div>
-                <div id="step-node-3" class="flex items-center space-x-2 text-slate-500 font-medium text-sm">
-                    <span class="w-7 h-7 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center font-extrabold text-xs">3</span>
-                    <span class="hidden sm:inline">完成訂票</span>
-                </div>
+        <!-- 2. 搜尋與選擇航班 (Search Tab) -->
+        <section id="tab-search" class="tab-content hidden space-y-6">
+            <!-- 搜尋條件 Panel -->
+            <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-100">
+                <h2 class="text-2xl font-black text-cva-blue mb-6 flex items-center space-x-2">
+                    <i class="fa-solid fa-plane-departure text-cva-gold"></i><span>搜尋虛擬航班</span>
+                </h2>
+                <form id="search-flight-form" onsubmit="handleSearchFlights(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">出發機場</label>
+                            <input type="text" id="search-dep" placeholder="例：RCTP / 台北桃園" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-cva-blue focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">抵達機場</label>
+                            <input type="text" id="search-arr" placeholder="例：RJTT / 東京羽田" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-cva-blue focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">出發日期</label>
+                            <input type="date" id="search-date" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-cva-blue focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">艙等</label>
+                            <select id="search-cabin" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-cva-blue focus:outline-none">
+                                <option value="經濟艙">經濟艙 (Economy)</option>
+                                <option value="豪華經濟艙">豪華經濟艙 (Premium Econ)</option>
+                                <option value="商務艙">商務艙 (Business)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex justify-end pt-2">
+                        <button type="submit" class="w-full sm:w-auto bg-cva-blue text-white font-bold px-8 py-3 rounded-xl shadow-md hover:bg-slate-800 transition flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-magnifying-glass"></i><span>搜尋符合航班</span>
+                        </button>
+                    </div>
+                </form>
             </div>
 
-            <!-- Selected Flight Summary Header -->
-            <div id="wizard-flight-summary" class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-wrap justify-between items-center gap-4">
-                <!-- Dynamic summary inserted here -->
-            </div>
-
-            <!-- Step 1: Passenger Info Form -->
-            <div id="wizard-step-1" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-                <h3 class="text-lg font-bold text-white border-b border-slate-800 pb-3"><i class="fa-solid fa-user-plus text-sky-400 mr-2"></i>填寫主要旅客資料</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">旅客姓名 <span class="text-rose-400">*</span></label>
-                        <input type="text" id="p-name" placeholder="請輸入姓名" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500" required>
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">性別 <span class="text-rose-400">*</span></label>
-                        <select id="p-gender" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500">
-                            <option value="男">男 (Male)</option>
-                            <option value="女">女 (Female)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">國籍 <span class="text-rose-400">*</span></label>
-                        <input type="text" id="p-nationality" placeholder="例如: 台灣 / Taiwan" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500" required>
-                    </div>
-                </div>
-                <div class="pt-4 flex justify-end">
-                    <button onclick="app.goToSeatMapStep()" class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-6 py-2.5 rounded-xl shadow-lg transition">下一步：機艙劃位選座 <i class="fa-solid fa-arrow-right ml-2"></i></button>
+            <!-- 航班結果列表 -->
+            <div class="space-y-4">
+                <h3 class="text-lg font-bold text-slate-700 flex items-center space-x-2">
+                    <i class="fa-solid fa-list-check"></i><span>對應航班列表</span>
+                </h3>
+                <div id="flight-results-container" class="space-y-4">
+                    <div class="bg-white rounded-xl p-8 text-center text-slate-400">請設定條件點擊搜尋，或等候系統資料庫同步...</div>
                 </div>
             </div>
+        </section>
 
-            <!-- Step 2: Interactive Seat Map -->
-            <div id="wizard-step-2" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-3 gap-2">
-                    <div>
-                        <h3 class="text-lg font-bold text-white"><i class="fa-solid fa-chair text-sky-400 mr-2"></i>選擇預定座位</h3>
-                        <p class="text-xs text-slate-400">綠色：可選｜灰色：已鎖定/已售出｜藍色：目前選擇</p>
-                    </div>
-                    <div class="text-right">
-                        <span class="text-xs text-slate-400 block">已選擇座位</span>
-                        <span id="selected-seat-display" class="text-xl font-black text-sky-400">尚未選擇</span>
-                    </div>
+        <!-- 3. 填寫旅客資料與劃位 (Booking Step 2 & 3) -->
+        <section id="tab-booking" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-100 max-w-4xl mx-auto space-y-8">
+                <!-- 選擇的航班摘要 -->
+                <div id="selected-flight-summary" class="bg-cva-blue/5 border border-cva-blue/20 p-4 rounded-xl flex flex-wrap justify-between items-center gap-4">
+                    <!-- 動態渲染 -->
                 </div>
 
-                <!-- Aircraft Fuselage Visual -->
-                <div class="overflow-x-auto py-6 flex justify-center">
-                    <div class="fuselage w-[340px] px-6 py-10 shadow-2xl">
-                        <div id="seat-grid-container" class="space-y-3">
-                            <!-- Dynamic座位選單 -->
+                <!-- 步驟 1: 填寫資料 -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-bold text-cva-blue border-b pb-2 flex items-center space-x-2">
+                        <i class="fa-solid fa-user-pen"></i><span>第一步：填寫旅客基本資料</span>
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">旅客護照英文姓名</label>
+                            <input type="text" id="passenger-name" placeholder="例：WANG / XIAOMING" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-cva-blue focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">性別</label>
+                            <select id="passenger-gender" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-cva-blue focus:outline-none">
+                                <option value="男 (Male)">男 (Male)</option>
+                                <option value="女 (Female)">女 (Female)</option>
+                                <option value="其他 (Other)">其他 (Other)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">國籍</label>
+                            <input type="text" id="passenger-nationality" value="Taiwan (ROC)" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-cva-blue focus:outline-none">
                         </div>
                     </div>
                 </div>
 
-                <div class="flex justify-between items-center pt-4 border-t border-slate-800">
-                    <button onclick="app.goToPassengerStep()" class="px-5 py-2 rounded-xl text-slate-400 hover:text-white bg-slate-800 text-sm font-semibold"><i class="fa-solid fa-arrow-left mr-2"></i>上一步</button>
-                    <button id="confirm-booking-btn" onclick="app.submitBooking()" disabled class="bg-sky-500 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-sky-400 text-slate-950 font-bold px-8 py-2.5 rounded-xl shadow-lg transition">確認劃位並完成訂票 <i class="fa-solid fa-check ml-2"></i></button>
-                </div>
-            </div>
-
-            <!-- Step 3: Booking Success & Ticket Display -->
-            <div id="wizard-step-3" class="hidden space-y-6">
-                <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-6 text-center space-y-2">
-                    <div class="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 mx-auto flex items-center justify-center text-2xl">
-                        <i class="fa-solid fa-circle-check"></i>
+                <!-- 步驟 2: 座位劃位圖 -->
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <h3 class="text-lg font-bold text-cva-blue flex items-center space-x-2">
+                            <i class="fa-solid fa-chair"></i><span>第二步：選擇機艙座位</span>
+                        </h3>
+                        <div class="text-sm font-semibold text-cva-accent" id="selected-seat-display">已選座位：未選擇</div>
                     </div>
-                    <h3 class="text-2xl font-bold text-white">訂票成功！資料已同步至雲端資料庫</h3>
-                    <p class="text-sm text-slate-300">請保存下方訂位代號 (PNR)。您可隨時於「我的訂單」或「Check-in」頁面輸入姓名與 PNR 進行服務。</p>
-                </div>
 
-                <!-- E-Ticket Display Container -->
-                <div id="created-ticket-card" class="max-w-2xl mx-auto">
-                    <!-- Ticket dynamically rendered -->
-                </div>
-
-                <div class="flex justify-center space-x-4">
-                    <button onclick="app.navigate('my-bookings')" class="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-sm">前往我的訂單</button>
-                    <button onclick="app.navigate('checkin')" class="px-6 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-sm shadow-lg shadow-sky-500/20">立即辦理 Check-in</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- ================= PAGE 3: MY BOOKINGS ================= -->
-        <div id="view-my-bookings" class="view-panel hidden space-y-6">
-            <div class="max-w-xl mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-4">
-                <div class="text-center space-y-1">
-                    <h2 class="text-2xl font-bold text-white"><i class="fa-solid fa-receipt text-sky-400 mr-2"></i>查詢我的訂單</h2>
-                    <p class="text-xs text-slate-400">免登入會員。輸入訂票時填寫之「姓名」與「訂位代號 (PNR)」</p>
-                </div>
-                <form onsubmit="app.handleQueryBooking(event)" class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1">旅客姓名</label>
-                        <input type="text" id="query-name" placeholder="請輸入旅客姓名" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500" required>
+                    <!-- 座位狀態圖例 -->
+                    <div class="flex flex-wrap gap-4 text-xs font-medium justify-center py-2">
+                        <div class="flex items-center space-x-1.5"><span class="w-4 h-4 bg-slate-200 border border-slate-400 rounded"></span><span>可選擇</span></div>
+                        <div class="flex items-center space-x-1.5"><span class="w-4 h-4 bg-blue-600 rounded"></span><span>目前指定</span></div>
+                        <div class="flex items-center space-x-1.5"><span class="w-4 h-4 bg-red-500 rounded"></span><span>已售出/保留</span></div>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1">訂位代號 (PNR)</label>
-                        <input type="text" id="query-pnr" placeholder="例如: CVA8X9K" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm uppercase tracking-widest font-mono text-sky-400 focus:outline-none focus:border-sky-500" required>
+
+                    <!-- 座位圖本體 -->
+                    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 overflow-x-auto">
+                        <div class="text-center font-bold text-xs text-slate-400 mb-4 tracking-widest uppercase">機頭方向 (Front of Aircraft)</div>
+                        <div id="seat-map-grid" class="flex flex-col items-center space-y-2 min-w-[320px]">
+                            <!-- 動態生成機艙劃位圖 -->
+                        </div>
                     </div>
-                    <button type="submit" class="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold py-3 rounded-xl transition shadow-lg shadow-sky-500/20">
-                        <i class="fa-solid fa-magnifying-glass mr-2"></i>搜尋雲端訂票紀錄
+                </div>
+
+                <div class="flex justify-between items-center pt-4 border-t">
+                    <button onclick="switchTab('search')" class="text-slate-500 hover:text-slate-800 font-medium text-sm flex items-center space-x-1">
+                        <i class="fa-solid fa-arrow-left"></i><span>重新選擇航班</span>
                     </button>
-                </form>
-            </div>
-
-            <!-- Booking Query Result Container -->
-            <div id="my-booking-result" class="hidden max-w-3xl mx-auto space-y-6">
-                <!-- Rendered dynamically -->
-            </div>
-        </div>
-
-        <!-- ================= PAGE 4: CHECK-IN ================= -->
-        <div id="view-checkin" class="view-panel hidden space-y-6">
-            <div class="max-w-xl mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-4">
-                <div class="text-center space-y-1">
-                    <div class="w-12 h-12 rounded-full bg-sky-500/10 text-sky-400 mx-auto flex items-center justify-center text-xl mb-2">
-                        <i class="fa-solid fa-passport"></i>
-                    </div>
-                    <h2 class="text-2xl font-bold text-white">線上自助 Check-in</h2>
-                    <p class="text-xs text-slate-400">未完成訂票者不可辦理。系統將直接從雲端資料庫驗證訂票資料。</p>
-                </div>
-                <form onsubmit="app.handleCheckInStart(event)" class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1">旅客姓名</label>
-                        <input type="text" id="checkin-name" placeholder="輸入旅客姓名" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500" required>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1">訂位代號 (PNR)</label>
-                        <input type="text" id="checkin-pnr" placeholder="例如: CVA8X9K" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm uppercase tracking-widest font-mono text-sky-400 focus:outline-none focus:border-sky-500" required>
-                    </div>
-                    <button type="submit" class="w-full bg-gradient-to-r from-sky-500 to-emerald-500 hover:from-sky-400 hover:to-emerald-400 text-slate-950 font-bold py-3 rounded-xl transition shadow-lg shadow-emerald-500/20">
-                        <i class="fa-solid fa-plane-departure mr-2"></i>驗證並開始 Check-in
+                    <button onclick="submitBooking()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition flex items-center space-x-2">
+                        <i class="fa-solid fa-check"></i><span>確認劃位並完成訂票</span>
                     </button>
-                </form>
+                </div>
             </div>
+        </section>
 
-            <!-- Checkin Confirmation / Boarding Pass View -->
-            <div id="checkin-process-area" class="hidden max-w-3xl mx-auto space-y-6">
-                <!-- Rendered dynamically -->
-            </div>
-        </div>
-
-        <!-- ================= PAGE 5: ANNOUNCEMENTS ================= -->
-        <div id="view-announcements" class="view-panel hidden space-y-6">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-4">
-                <h2 class="text-2xl font-bold text-white flex items-center space-x-2">
-                    <i class="fa-solid fa-bullhorn text-sky-400"></i>
-                    <span>中華虛擬航空 最新公告</span>
+        <!-- 4. 我的訂單查詢與電子機票 (My Orders Tab) -->
+        <section id="tab-my-orders" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-100 max-w-xl mx-auto">
+                <h2 class="text-2xl font-black text-cva-blue mb-2 flex items-center space-x-2">
+                    <i class="fa-solid fa-magnifying-glass text-cva-gold"></i><span>查詢我的訂購紀錄</span>
                 </h2>
-                <button id="add-announcement-btn" onclick="app.openAddAnnouncementModal()" class="hidden bg-sky-500 hover:bg-sky-400 text-slate-950 px-3 py-1.5 rounded-xl text-xs font-bold">
-                    <i class="fa-solid fa-plus mr-1"></i>發布公告
-                </button>
-            </div>
-            <div id="announcements-list" class="space-y-4">
-                <!-- Dynamic announcements loaded from DB -->
-            </div>
-        </div>
-
-        <!-- ================= ADMIN BACKEND 1: BOOKING MANAGEMENT ================= -->
-        <div id="view-admin-booking" class="view-panel hidden space-y-6">
-            <!-- Admin Navigation Header Bar -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-wrap justify-between items-center gap-3">
-                <div class="flex space-x-2">
-                    <button class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-sky-500 text-slate-950 shadow">👨‍✈️ (一) 訂票管理中心</button>
-                    <button onclick="app.navigate('admin-checkin')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-800 text-slate-300 hover:bg-slate-700">🛫 (二) Check-in 管理中心</button>
-                </div>
-                <button onclick="app.logoutAdmin()" class="text-xs text-rose-400 hover:text-rose-300 font-semibold px-3 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20">退出管理員模式</button>
+                <p class="text-xs text-slate-500 mb-6">無需登入會員，請輸入訂票時之姓名與系統核發之 PNR 訂位代號。</p>
+                
+                <form onsubmit="handleQueryOrder(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">旅客英文姓名</label>
+                        <input type="text" id="query-name" placeholder="例：WANG / XIAOMING" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-cva-blue focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">訂位代號 (PNR - 6位字串)</label>
+                        <input type="text" id="query-pnr" maxlength="6" placeholder="例：CVA8X2" required class="w-full px-4 py-2.5 uppercase rounded-xl border border-slate-300 focus:ring-2 focus:ring-cva-blue focus:outline-none">
+                    </div>
+                    <button type="submit" class="w-full bg-cva-blue text-white font-bold py-3 rounded-xl shadow-md hover:bg-slate-800 transition">
+                        查詢訂票紀錄
+                    </button>
+                </form>
             </div>
 
-            <!-- Dynamic Stats Cards -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-                    <span class="text-xs text-slate-400 block font-medium">總訂票數</span>
-                    <span id="admin-stat-total-bookings" class="text-2xl font-black text-sky-400 mt-1 block">0</span>
+            <!-- 查詢結果 (電子機票 E-Ticket 區塊) -->
+            <div id="order-result-card" class="hidden max-w-3xl mx-auto bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+                <!-- 動態注入 E-Ticket 詳細內容 -->
+            </div>
+        </section>
+
+        <!-- 5. Check-in 報到系統 (Check-in Tab) -->
+        <section id="tab-checkin" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-100 max-w-xl mx-auto">
+                <div class="flex items-center space-x-3 mb-2">
+                    <div class="bg-emerald-100 text-emerald-600 p-3 rounded-xl"><i class="fa-solid fa-passport text-2xl"></i></div>
+                    <div>
+                        <h2 class="text-2xl font-black text-cva-blue">線上辦理 Check-in</h2>
+                        <p class="text-xs text-slate-500">免登入！完成訂票者方可辦理線上報到並獲取登機證</p>
+                    </div>
                 </div>
-                <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-                    <span class="text-xs text-slate-400 block font-medium">資料庫航班數</span>
-                    <span id="admin-stat-active-flights" class="text-2xl font-black text-emerald-400 mt-1 block">0</span>
-                </div>
-                <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-                    <span class="text-xs text-slate-400 block font-medium">已取消訂單數</span>
-                    <span id="admin-stat-cancelled" class="text-2xl font-black text-rose-400 mt-1 block">0</span>
-                </div>
-                <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-                    <span class="text-xs text-slate-400 block font-medium">全站平均售票率</span>
-                    <span id="admin-stat-sales-rate" class="text-2xl font-black text-amber-400 mt-1 block">0%</span>
-                </div>
+
+                <form onsubmit="handleCheckInQuery(event)" class="space-y-4 pt-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">旅客英文姓名</label>
+                        <input type="text" id="checkin-name" placeholder="例：WANG / XIAOMING" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">訂位代號 (PNR)</label>
+                        <input type="text" id="checkin-pnr" maxlength="6" placeholder="例：CVA8X2" required class="w-full px-4 py-2.5 uppercase rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                    </div>
+                    <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl shadow-md hover:bg-emerald-700 transition">
+                        開始 Check-in 驗證
+                    </button>
+                </form>
             </div>
 
-            <!-- Action Sub-Tabs -->
-            <div class="flex space-x-2 border-b border-slate-800 pb-2">
-                <button onclick="app.switchAdminTab('flights')" id="admin-tab-btn-flights" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-800 text-sky-400">航班建立與維護</button>
-                <button onclick="app.switchAdminTab('bookings')" id="admin-tab-btn-bookings" class="px-4 py-2 rounded-lg text-sm font-bold text-slate-400 hover:text-white">雲端訂票紀錄名冊</button>
+            <!-- Check-in 報到確認與登機證區塊 -->
+            <div id="checkin-action-card" class="hidden max-w-3xl mx-auto bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 sm:p-8 space-y-6">
+                <!-- 動態注入內容 -->
             </div>
+        </section>
 
-            <!-- Sub View: Flights Management -->
-            <div id="admin-subview-flights" class="space-y-4">
-                <div class="flex justify-between items-center">
-                    <h3 class="text-lg font-bold text-white"><i class="fa-solid fa-plane text-sky-400 mr-2"></i>目前雲端航班列表</h3>
-                    <button onclick="app.openAddFlightModal()" class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shadow"><i class="fa-solid fa-plus mr-1"></i>建立新航班</button>
+        <!-- 6. 管理員後台 (Admin Panel Tab) -->
+        <section id="tab-admin" class="tab-content hidden space-y-8">
+            <!-- 後台頂部控制列與模組切換 -->
+            <div class="bg-cva-blue text-white p-6 rounded-2xl shadow-lg flex flex-wrap justify-between items-center gap-4">
+                <div class="flex items-center space-x-3">
+                    <i class="fa-solid fa-user-shield text-cva-gold text-2xl"></i>
+                    <div>
+                        <h2 class="font-bold text-xl">中華虛擬航空 管理系統中心</h2>
+                        <p class="text-xs text-slate-300">雲端即時連線控制台 (Cloud Database Mode)</p>
+                    </div>
                 </div>
-                <div class="overflow-x-auto rounded-2xl border border-slate-800">
-                    <table class="w-full text-left text-xs sm:text-sm text-slate-300">
-                        <thead class="bg-slate-800/80 uppercase text-slate-400 font-semibold">
-                            <tr>
-                                <th class="p-3">航班號 / 機型</th>
-                                <th class="p-3">航線</th>
-                                <th class="p-3">日期與時間</th>
-                                <th class="p-3">總座位 / 票價</th>
-                                <th class="p-3">訂票開關</th>
-                                <th class="p-3 text-right">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-flights-table-body" class="divide-y divide-slate-800 bg-slate-900">
-                            <!-- Dynamic rows -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Sub View: Bookings List -->
-            <div id="admin-subview-bookings" class="hidden space-y-4">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <h3 class="text-lg font-bold text-white"><i class="fa-solid fa-list-check text-sky-400 mr-2"></i>全站訂票紀錄</h3>
-                    <input type="text" id="admin-booking-search" oninput="app.renderAdminBookingsTable()" placeholder="搜尋 PNR / 姓名 / 航班號..." class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white w-full sm:w-64">
-                </div>
-                <div class="overflow-x-auto rounded-2xl border border-slate-800">
-                    <table class="w-full text-left text-xs sm:text-sm text-slate-300">
-                        <thead class="bg-slate-800/80 uppercase text-slate-400 font-semibold">
-                            <tr>
-                                <th class="p-3">PNR</th>
-                                <th class="p-3">旅客姓名</th>
-                                <th class="p-3">航班</th>
-                                <th class="p-3">座位 / 艙等</th>
-                                <th class="p-3">訂單狀態</th>
-                                <th class="p-3">Check-in</th>
-                                <th class="p-3 text-right">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-bookings-table-body" class="divide-y divide-slate-800 bg-slate-900">
-                            <!-- Dynamic rows -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- ================= ADMIN BACKEND 2: CHECK-IN MANAGEMENT ================= -->
-        <div id="view-admin-checkin" class="view-panel hidden space-y-6">
-            <!-- Header Switcher Bar -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-wrap justify-between items-center gap-3">
-                <div class="flex space-x-2">
-                    <button onclick="app.navigate('admin-booking')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-800 text-slate-300 hover:bg-slate-700">👨‍✈️ (一) 訂票管理中心</button>
-                    <button class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-emerald-500 text-slate-950 shadow">🛫 (二) Check-in 管理中心</button>
-                </div>
-                <button onclick="app.logoutAdmin()" class="text-xs text-rose-400 hover:text-rose-300 font-semibold px-3 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20">退出管理員模式</button>
-            </div>
-
-            <!-- Checkin Dashboard Stats -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-                    <span class="text-xs text-slate-400 block font-medium">已 Check-in 總人數</span>
-                    <span id="admin-stat-checkin-count" class="text-2xl font-black text-emerald-400 mt-1 block">0</span>
-                </div>
-                <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-                    <span class="text-xs text-slate-400 block font-medium">未 Check-in 人數</span>
-                    <span id="admin-stat-pending-checkin" class="text-2xl font-black text-amber-400 mt-1 block">0</span>
-                </div>
-                <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-                    <span class="text-xs text-slate-400 block font-medium">全站報到率</span>
-                    <span id="admin-stat-checkin-rate" class="text-2xl font-black text-sky-400 mt-1 block">0%</span>
-                </div>
-                <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-                    <span class="text-xs text-slate-400 block font-medium">開放 Check-in 航班數</span>
-                    <span id="admin-stat-open-counter-flights" class="text-2xl font-black text-indigo-400 mt-1 block">0</span>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="switchAdminSubTab('booking-admin')" id="btn-sub-booking" class="px-4 py-2 rounded-xl text-sm font-bold bg-cva-gold text-cva-blue shadow">
+                        <i class="fa-solid fa-plane-circle-check"></i> 訂票管理中心
+                    </button>
+                    <button onclick="switchAdminSubTab('checkin-admin')" id="btn-sub-checkin" class="px-4 py-2 rounded-xl text-sm font-bold bg-white/10 hover:bg-white/20 text-white">
+                        <i class="fa-solid fa-clipboard-user"></i> Check-in 管理中心
+                    </button>
+                    <button onclick="logoutAdmin()" class="px-3 py-2 rounded-xl text-sm font-bold bg-red-600/80 hover:bg-red-600 text-white">
+                        <i class="fa-solid fa-right-from-bracket"></i> 退出後台
+                    </button>
                 </div>
             </div>
 
-            <!-- Flight Check-in Counter Status Controls -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-                <h3 class="text-lg font-bold text-white"><i class="fa-solid fa-toggle-on text-emerald-400 mr-2"></i>航班 Check-in 開櫃 / 關櫃 控制台</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="admin-checkin-counter-cards">
-                    <!-- Cards rendered dynamically -->
+            <!-- 後台 1: 訂票管理中心 -->
+            <div id="admin-sub-booking" class="space-y-6">
+                <!-- 即時動態數據 Dashboard -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                        <div class="text-xs font-bold text-slate-400 mb-1">今日總訂購數</div>
+                        <div class="text-2xl font-black text-cva-blue" id="dash-total-bookings">0</div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                        <div class="text-xs font-bold text-slate-400 mb-1">營運中航班數</div>
+                        <div class="text-2xl font-black text-cva-gold" id="dash-active-flights">0</div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                        <div class="text-xs font-bold text-slate-400 mb-1">取消或暫停航班</div>
+                        <div class="text-2xl font-black text-red-500" id="dash-cancelled-flights">0</div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                        <div class="text-xs font-bold text-slate-400 mb-1">全線預訂售購率</div>
+                        <div class="text-2xl font-black text-emerald-600" id="dash-booking-rate">0%</div>
+                    </div>
+                </div>
+
+                <!-- 航班建立與管理 -->
+                <div class="bg-white p-6 rounded-2xl shadow-md border border-slate-100 space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-lg text-slate-800 flex items-center space-x-2">
+                            <i class="fa-solid fa-plane text-cva-blue"></i><span>航班發布與管理</span>
+                        </h3>
+                        <button onclick="toggleAddFlightModal(true)" class="bg-cva-blue text-white text-xs font-bold px-4 py-2 rounded-xl shadow hover:bg-slate-800 transition">
+                            <i class="fa-solid fa-plus"></i> 新增虛擬航班
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-600">
+                            <thead class="bg-slate-50 uppercase text-slate-400 border-b">
+                                <tr>
+                                    <th class="p-3">航班編號</th>
+                                    <th class="p-3">機型</th>
+                                    <th class="p-3">航線 (Dep -> Arr)</th>
+                                    <th class="p-3">日期/時間</th>
+                                    <th class="p-3">票價</th>
+                                    <th class="p-3">座位狀態</th>
+                                    <th class="p-3">販售與航班狀態</th>
+                                    <th class="p-3 text-right">管理操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-flight-table-body">
+                                <tr><td colspan="8" class="p-4 text-center text-slate-400">載入中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 實時訂票紀錄總表 -->
+                <div class="bg-white p-6 rounded-2xl shadow-md border border-slate-100 space-y-4">
+                    <h3 class="font-bold text-lg text-slate-800 flex items-center space-x-2">
+                        <i class="fa-solid fa-ticket text-cva-gold"></i><span>全站實時訂位紀錄列表</span>
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-600">
+                            <thead class="bg-slate-50 uppercase text-slate-400 border-b">
+                                <tr>
+                                    <th class="p-3">PNR</th>
+                                    <th class="p-3">旅客姓名</th>
+                                    <th class="p-3">航班</th>
+                                    <th class="p-3">座位/艙等</th>
+                                    <th class="p-3">訂票時間</th>
+                                    <th class="p-3">Check-in 狀態</th>
+                                    <th class="p-3 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-booking-table-body">
+                                <tr><td colspan="7" class="p-4 text-center text-slate-400">載入中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            <!-- Check-in Passenger List -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-                <h3 class="text-lg font-bold text-white"><i class="fa-solid fa-users text-sky-400 mr-2"></i>即時旅客 Check-in 狀態名冊</h3>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs sm:text-sm text-slate-300">
-                        <thead class="bg-slate-800/80 uppercase text-slate-400 font-semibold">
-                            <tr>
-                                <th class="p-3">PNR / 旅客</th>
-                                <th class="p-3">航班號</th>
-                                <th class="p-3">座位 / Gate</th>
-                                <th class="p-3">登機證編號</th>
-                                <th class="p-3">Check-in 狀態</th>
-                                <th class="p-3 text-right">管理操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-checkin-table-body" class="divide-y divide-slate-800 bg-slate-900">
-                            <!-- Dynamic checkin list -->
-                        </tbody>
-                    </table>
+            <!-- 後台 2: Check-in 管理中心 -->
+            <div id="admin-sub-checkin" class="hidden space-y-6">
+                <!-- 即時 Check-in Dashboard -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                        <div class="text-xs font-bold text-slate-400 mb-1">已完成 Check-in 人數</div>
+                        <div class="text-2xl font-black text-emerald-600" id="dash-checked-in-count">0</div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                        <div class="text-xs font-bold text-slate-400 mb-1">未報到旅客數</div>
+                        <div class="text-2xl font-black text-amber-500" id="dash-unchecked-count">0</div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                        <div class="text-xs font-bold text-slate-400 mb-1">全站航班平均報到率</div>
+                        <div class="text-2xl font-black text-cva-blue" id="dash-checkin-rate">0%</div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                        <div class="text-xs font-bold text-slate-400 mb-1">開放 Check-in 航班數</div>
+                        <div class="text-2xl font-black text-blue-600" id="dash-open-checkin-flights">0</div>
+                    </div>
+                </div>
+
+                <!-- 各航班 Check-in 開放/關閉狀態管理 -->
+                <div class="bg-white p-6 rounded-2xl shadow-md border border-slate-100 space-y-4">
+                    <h3 class="font-bold text-lg text-slate-800 flex items-center space-x-2">
+                        <i class="fa-solid fa-door-open text-emerald-600"></i><span>航班 Check-in 櫃檯開放控制</span>
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-600">
+                            <thead class="bg-slate-50 uppercase text-slate-400 border-b">
+                                <tr>
+                                    <th class="p-3">航班編號</th>
+                                    <th class="p-3">登機門 Gate</th>
+                                    <th class="p-3">預計起飛</th>
+                                    <th class="p-3">已訂票 / 已報到</th>
+                                    <th class="p-3">報到率</th>
+                                    <th class="p-3">櫃檯 status</th>
+                                    <th class="p-3 text-right">開關櫃操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-checkin-control-table">
+                                <tr><td colspan="7" class="p-4 text-center text-slate-400">載入中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        </div>
+        </section>
 
     </main>
 
-    <!-- ================= MODALS CONTAINER ================= -->
-
-    <!-- Modal 1: Admin Auth Modal -->
-    <div id="modal-admin-auth" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
-            <div class="flex justify-between items-center">
-                <h3 class="text-lg font-bold text-white"><i class="fa-solid fa-user-shield text-sky-400 mr-2"></i>管理員身分驗證</h3>
-                <button onclick="app.closeAdminAuthModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+    <!-- 管理員驗證 Login Modal -->
+    <div id="admin-login-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-6">
+            <div class="text-center">
+                <div class="w-12 h-12 bg-cva-blue text-cva-gold rounded-full flex items-center justify-center mx-auto text-xl mb-2">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800">管理員身份驗證</h3>
+                <p class="text-xs text-slate-400 mt-1">請輸入授權金鑰以存取控制台</p>
             </div>
-            <p class="text-xs text-slate-400">請輸入 CVA 管理員授權密碼以進入後台。</p>
             <div>
-                <input type="password" id="admin-password-input" placeholder="輸入管理員密碼" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500">
+                <label class="block text-xs font-bold text-slate-600 mb-1">管理員密碼</label>
+                <input type="password" id="admin-pass-input" placeholder="請輸入管理員密碼" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-cva-blue focus:outline-none">
             </div>
             <div class="flex space-x-3">
-                <button onclick="app.closeAdminAuthModal()" class="w-1/2 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold">取消</button>
-                <button onclick="app.verifyAdminPassword()" class="w-1/2 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 text-sm font-bold">進入後台</button>
+                <button onclick="closeAdminModal()" class="w-1/2 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-600 hover:bg-slate-100">取消</button>
+                <button onclick="verifyAdminLogin()" class="w-1/2 py-2.5 rounded-xl bg-cva-blue font-bold text-white shadow hover:bg-slate-800">驗證登入</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal 2: Create Flight Modal -->
-    <div id="modal-add-flight" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-6 space-y-4 shadow-2xl my-8">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 class="text-lg font-bold text-white"><i class="fa-solid fa-plane-circle-plus text-sky-400 mr-2"></i>建立新航班 (同步至雲端)</h3>
-                <button onclick="app.closeAddFlightModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
-            </div>
-            <form onsubmit="app.handleCreateFlight(event)" class="space-y-4 text-xs sm:text-sm">
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-slate-400 mb-1">航班編號 (Flight No.)</label>
-                        <input type="text" id="mf-flight-no" placeholder="如 CI-101 或 BR-198" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-sky-500" required>
-                    </div>
-                    <div>
-                        <label class="block text-slate-400 mb-1">機型 (Aircraft Model)</label>
-                        <input type="text" id="mf-aircraft" placeholder="如 A350-900 或 B787-10" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-sky-500" required>
-                    </div>
+    <!-- 新增航班 Modal -->
+    <div id="add-flight-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl space-y-6 my-8">
+            <h3 class="text-xl font-bold text-cva-blue border-b pb-2 flex items-center space-x-2">
+                <i class="fa-solid fa-plane-circle-plus"></i><span>建立全新虛擬航班</span>
+            </h3>
+            <form onsubmit="handleCreateFlight(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div>
+                    <label class="block font-bold mb-1">航班編號 (Flight No)</label>
+                    <input type="text" id="m-flight-no" placeholder="例：CI100" required class="w-full p-2.5 border rounded-xl">
                 </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-slate-400 mb-1">出發機場 (From)</label>
-                        <input type="text" id="mf-from" placeholder="如 TPE - 台北桃園" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-sky-500" required>
-                    </div>
-                    <div>
-                        <label class="block text-slate-400 mb-1">抵達機場 (To)</label>
-                        <input type="text" id="mf-to" placeholder="如 NRT - 東京成田" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-sky-500" required>
-                    </div>
+                <div>
+                    <label class="block font-bold mb-1">執飛機型 (Aircraft)</label>
+                    <input type="text" id="m-aircraft" placeholder="例：Airbus A350-900" required class="w-full p-2.5 border rounded-xl">
                 </div>
-                <div class="grid grid-cols-3 gap-3">
-                    <div>
-                        <label class="block text-slate-400 mb-1">出發日期</label>
-                        <input type="date" id="mf-date" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-sky-500" required>
-                    </div>
-                    <div>
-                        <label class="block text-slate-400 mb-1">起飛時間</label>
-                        <input type="time" id="mf-dep-time" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-sky-500" required>
-                    </div>
-                    <div>
-                        <label class="block text-slate-400 mb-1">抵達時間</label>
-                        <input type="time" id="mf-arr-time" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-sky-500" required>
-                    </div>
+                <div>
+                    <label class="block font-bold mb-1">出發機場 (Departure)</label>
+                    <input type="text" id="m-dep" placeholder="例：RCTP / 台北桃園" required class="w-full p-2.5 border rounded-xl">
                 </div>
-                <div class="grid grid-cols-3 gap-3">
-                    <div>
-                        <label class="block text-slate-400 mb-1">登機門 (Gate)</label>
-                        <input type="text" id="mf-gate" placeholder="如 A7 或 B4" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-sky-500" required>
-                    </div>
-                    <div>
-                        <label class="block text-slate-400 mb-1">艙等 (Class)</label>
-                        <select id="mf-cabin" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-sky-500">
-                            <option value="經濟艙">經濟艙 (Economy)</option>
-                            <option value="商務艙">商務艙 (Business)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-slate-400 mb-1">機艙總排數 (24座/6排)</label>
-                        <input type="number" id="mf-total-rows" value="6" min="2" max="10" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-sky-500" required>
-                    </div>
+                <div>
+                    <label class="block font-bold mb-1">抵達機場 (Arrival)</label>
+                    <input type="text" id="m-arr" placeholder="例：RJTT / 東京羽田" required class="w-full p-2.5 border rounded-xl">
                 </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-slate-400 mb-1">單人票價 (NTD)</label>
-                        <input type="number" id="mf-price" placeholder="12500" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-sky-500" required>
-                    </div>
-                    <div>
-                        <label class="block text-slate-400 mb-1">初始航班動態</label>
-                        <select id="mf-status" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-sky-500">
-                            <option value="正常 ON TIME">正常 (ON TIME)</option>
-                            <option value="延誤 DELAYED">延誤 (DELAYED)</option>
-                        </select>
-                    </div>
+                <div>
+                    <label class="block font-bold mb-1">出發日期</label>
+                    <input type="date" id="m-date" required class="w-full p-2.5 border rounded-xl">
                 </div>
-                <div class="pt-3 flex justify-end space-x-3">
-                    <button type="button" onclick="app.closeAddFlightModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold">取消</button>
-                    <button type="submit" class="px-6 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold shadow-lg">建立並立即發布航班</button>
+                <div>
+                    <label class="block font-bold mb-1">起飛時間 (Departure Time)</label>
+                    <input type="time" id="m-dep-time" required class="w-full p-2.5 border rounded-xl">
+                </div>
+                <div>
+                    <label class="block font-bold mb-1">抵達時間 (Arrival Time)</label>
+                    <input type="time" id="m-arr-time" required class="w-full p-2.5 border rounded-xl">
+                </div>
+                <div>
+                    <label class="block font-bold mb-1">登機門 (Gate)</label>
+                    <input type="text" id="m-gate" placeholder="例：A9" required class="w-full p-2.5 border rounded-xl">
+                </div>
+                <div>
+                    <label class="block font-bold mb-1">標準票價 (TWD)</label>
+                    <input type="number" id="m-price" placeholder="例：12500" required class="w-full p-2.5 border rounded-xl">
+                </div>
+                <div>
+                    <label class="block font-bold mb-1">總座位容量 (Seats)</label>
+                    <input type="number" id="m-capacity" value="24" readonly class="w-full p-2.5 border rounded-xl bg-slate-100 text-slate-500">
+                    <span class="text-[10px] text-slate-400">標準配置固定為 24 席 (4x6)</span>
+                </div>
+                <div class="md:col-span-2 flex justify-end space-x-3 pt-4 border-t">
+                    <button type="button" onclick="toggleAddFlightModal(false)" class="px-5 py-2.5 rounded-xl border text-slate-600 font-bold">取消</button>
+                    <button type="submit" class="px-6 py-2.5 rounded-xl bg-cva-blue text-white font-bold shadow hover:bg-slate-800">建立並發布</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Modal 3: Create Announcement Modal -->
-    <div id="modal-add-announcement" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 class="text-lg font-bold text-white"><i class="fa-solid fa-bullhorn text-sky-400 mr-2"></i>發布最新公告</h3>
-                <button onclick="app.closeAddAnnouncementModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+    <!-- 頁尾 Footer -->
+    <footer class="bg-cva-blue text-white text-xs border-t border-slate-800 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-plane text-cva-gold"></i>
+                <span class="font-bold">中華虛擬航空 (China Virtual Airlines)</span>
+                <span class="text-slate-400">| 虛擬飛行模擬專用</span>
             </div>
-            <form onsubmit="app.handleCreateAnnouncement(event)" class="space-y-4">
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">公告標題</label>
-                    <input type="text" id="ma-title" placeholder="請輸入標題" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500" required>
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">公告標籤</label>
-                    <select id="ma-tag" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
-                        <option value="系統公告">系統公告</option>
-                        <option value="航務動態">航務動態</option>
-                        <option value="優惠活動">優惠活動</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">內文</label>
-                    <textarea id="ma-content" rows="4" placeholder="請輸入詳細內容..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500" required></textarea>
-                </div>
-                <div class="flex justify-end space-x-3 pt-2">
-                    <button type="button" onclick="app.closeAddAnnouncementModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">取消</button>
-                    <button type="submit" class="px-5 py-2 rounded-xl bg-sky-500 text-slate-950 font-bold text-xs shadow-lg">發布公告</button>
-                </div>
-            </form>
+            <div class="text-slate-400">
+                本網站僅供模擬飛行樂趣使用，所有航班資訊均為虛擬數據。
+            </div>
         </div>
-    </div>
+    </footer>
 
-    <!-- Notification Toast -->
-    <div id="toast-message" class="fixed bottom-6 right-6 z-50 hidden px-5 py-3 rounded-2xl bg-slate-800 border border-slate-700 text-white shadow-2xl flex items-center space-x-3 transition-all duration-300">
-        <i id="toast-icon" class="fa-solid fa-circle-info text-sky-400 text-lg"></i>
-        <span id="toast-text" class="text-sm font-medium">提示訊息</span>
-    </div>
-
-    <!-- ================= FIREBASE & APP ENGINE JS ================= -->
+    <!-- JS 邏輯處理 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { 
+            getAuth, 
+            signInWithCustomToken, 
+            signInAnonymously, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            doc, 
+            setDoc, 
+            getDoc, 
+            getDocs, 
+            onSnapshot, 
+            updateDoc, 
+            deleteDoc,
+            query 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global Firebase state initialization
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'cva-system-default';
+        // Firebase 初始化與全域變數配置
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "demo-api-key",
+            apiKey: "demo-key",
             authDomain: "demo.firebaseapp.com",
-            projectId: "demo-project",
+            projectId: "demo-app",
             storageBucket: "demo.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:123456"
+            messagingSenderId: "123456",
+            appId: "1:123456:web:123456"
         };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'cva-system-default';
 
-        const firebaseApp = initializeApp(firebaseConfig);
-        const auth = getAuth(firebaseApp);
-        const db = getFirestore(firebaseApp);
+        // 應用程式狀態 (State)
+        let currentUser = null;
+        let flightsData = [];
+        let bookingsData = [];
+        let selectedFlightForBooking = null;
+        let currentSelectedSeat = null;
+        let isAdminLoggedIn = false;
 
-        // RULE 1 Strict Collections
-        const flightsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'flights');
-        const bookingsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'bookings');
-        const announcementsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'announcements');
-
-        // Application State Container
-        window.state = {
-            user: null,
-            isAdmin: false,
-            flights: [],
-            bookings: [],
-            announcements: [],
-            selectedFlightForBooking: null,
-            selectedSeat: null,
-            passengerInfo: { name: '', gender: '男', nationality: '' },
-            currentTab: 'home',
-            adminSubTab: 'flights'
-        };
-
+        // 初始化驗證
         async function initAuth() {
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -750,892 +674,738 @@
                     await signInAnonymously(auth);
                 }
             } catch (err) {
-                console.error("Auth error:", err);
+                console.error("Auth Exception:", err);
             }
         }
+        initAuth();
 
-        onAuthStateChanged(auth, (u) => {
-            window.state.user = u;
-            const badge = document.getElementById('sync-status-badge');
-            if (u) {
-                badge.innerText = "雲端同步中";
-                badge.className = "px-2 py-0.5 text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 rounded-full border border-emerald-500/30";
-                // Start listening to real-time Firestore collections
-                startDatabaseListeners();
-            } else {
-                badge.innerText = "未連線";
-                badge.className = "px-2 py-0.5 text-[10px] font-semibold bg-rose-500/20 text-rose-400 rounded-full border border-rose-500/30";
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                setupRealtimeListeners();
             }
         });
 
-        function startDatabaseListeners() {
-            if (!auth.currentUser) return;
+        // 實時監聽資料庫
+        function setupRealtimeListeners() {
+            if (!currentUser) return;
 
-            // Real-time Flight List Sync
-            onSnapshot(flightsColRef, (snapshot) => {
-                window.state.flights = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                app.renderFlightsList();
-                app.renderAdminDashboard();
-            }, (error) => console.error("Flight sync error:", error));
+            // 1. 航班資料監聽 (Public Data)
+            const flightsRef = collection(db, 'artifacts', appId, 'public', 'data', 'flights');
+            onSnapshot(flightsRef, (snapshot) => {
+                flightsData = [];
+                snapshot.forEach(doc => {
+                    flightsData.push({ id: doc.id, ...doc.data() });
+                });
+                renderFlights();
+                renderHomeFlightPreview();
+                renderAdminTables();
+            }, (error) => showToast("航班資料庫同步失敗", "error"));
 
-            // Real-time Booking Records Sync
-            onSnapshot(bookingsColRef, (snapshot) => {
-                window.state.bookings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                app.renderAdminDashboard();
-                if (window.state.selectedFlightForBooking) {
-                    app.renderSeatMatrix();
-                }
-            }, (error) => console.error("Booking sync error:", error));
-
-            // Real-time Announcement Sync
-            onSnapshot(announcementsColRef, (snapshot) => {
-                window.state.announcements = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                app.renderAnnouncements();
-            }, (error) => console.error("Announcement sync error:", error));
+            // 2. 訂單資料監聽 (Public Data)
+            const bookingsRef = collection(db, 'artifacts', appId, 'public', 'data', 'bookings');
+            onSnapshot(bookingsRef, (snapshot) => {
+                bookingsData = [];
+                snapshot.forEach(doc => {
+                    bookingsData.push({ id: doc.id, ...doc.data() });
+                });
+                renderAdminTables();
+            }, (error) => showToast("訂單資料庫同步失敗", "error"));
         }
 
-        window.app = {
-            // Navigation
-            navigate: (tabId) => {
-                if ((tabId === 'admin-booking' || tabId === 'admin-checkin') && !window.state.isAdmin) {
-                    app.openAdminAuthModal();
-                    return;
-                }
-                window.state.currentTab = tabId;
-                document.querySelectorAll('.view-panel').forEach(el => el.classList.add('hidden'));
-                const target = document.getElementById(`view-${tabId}`);
-                if (target) target.classList.remove('hidden');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            },
+        // --- Toast 提示功能 ---
+        window.showToast = function(msg, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgColor = type === 'error' ? 'bg-red-600' : type === 'success' ? 'bg-emerald-600' : 'bg-cva-blue';
+            toast.className = `${bgColor} text-white text-xs px-4 py-3 rounded-xl shadow-xl flex items-center space-x-2 transition-all duration-300 transform translate-y-2 opacity-0`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}"></i><span>${msg}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.remove('translate-y-2', 'opacity-0'); }, 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        };
 
-            toggleMobileMenu: () => {
-                const el = document.getElementById('mobile-menu');
-                el.classList.toggle('hidden');
-            },
+        // --- Tab 切換控制 ---
+        window.switchTab = function(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // 手機版選單關閉
+            document.getElementById('mobile-menu').classList.add('hidden');
+        };
 
-            showToast: (text, icon = 'fa-circle-info') => {
-                const toast = document.getElementById('toast-message');
-                const tText = document.getElementById('toast-text');
-                const tIcon = document.getElementById('toast-icon');
-                tText.innerText = text;
-                tIcon.className = `fa-solid ${icon} text-sky-400 text-lg`;
-                toast.classList.remove('hidden');
-                setTimeout(() => toast.classList.add('hidden'), 3500);
-            },
+        window.toggleMobileMenu = function() {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        };
 
-            // Admin Password Verification
-            openAdminAuthModal: () => {
-                if (window.state.isAdmin) {
-                    app.navigate('admin-booking');
-                } else {
-                    document.getElementById('modal-admin-auth').classList.remove('hidden');
-                }
-            },
-            closeAdminAuthModal: () => {
-                document.getElementById('modal-admin-auth').classList.add('hidden');
-            },
-            verifyAdminPassword: () => {
-                const pwd = document.getElementById('admin-password-input').value;
-                if (pwd === '0206') {
-                    window.state.isAdmin = true;
-                    document.getElementById('admin-nav-label').innerText = "管理員控制台";
-                    document.getElementById('add-announcement-btn').classList.remove('hidden');
-                    app.closeAdminAuthModal();
-                    app.navigate('admin-booking');
-                    app.showToast("已成功進入管理員權限模式！", "fa-shield-check");
-                } else {
-                    app.showToast("密碼錯誤！請重新嘗試。", "fa-triangle-exclamation");
-                }
-            },
-            logoutAdmin: () => {
-                window.state.isAdmin = false;
-                document.getElementById('admin-nav-label').innerText = "管理員登入";
-                document.getElementById('add-announcement-btn').classList.add('hidden');
-                app.navigate('home');
-                app.showToast("已登出管理員身分。");
-            },
-
-            handleSearchFlights: (e) => {
-                e.preventDefault();
-                app.renderFlightsList();
-            },
-
-            renderFlightsList: () => {
-                const container = document.getElementById('flights-container');
-                const badge = document.getElementById('flight-count-badge');
-                
-                const fromQuery = (document.getElementById('search-from')?.value || '').trim().toLowerCase();
-                const toQuery = (document.getElementById('search-to')?.value || '').trim().toLowerCase();
-                const cabinQuery = document.getElementById('search-cabin')?.value || 'all';
-
-                let filtered = window.state.flights.filter(f => {
-                    const matchFrom = !fromQuery || (f.from_airport && f.from_airport.toLowerCase().includes(fromQuery));
-                    const matchTo = !toQuery || (f.to_airport && f.to_airport.toLowerCase().includes(toQuery));
-                    const matchCabin = cabinQuery === 'all' || f.cabin_class === cabinQuery;
-                    return matchFrom && matchTo && matchCabin;
-                });
-
-                badge.innerText = `符合條件：${filtered.length} 筆`;
-
-                if (filtered.length === 0) {
-                    container.innerHTML = `
-                        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center space-y-3">
-                            <i class="fa-solid fa-plane-slash text-4xl text-slate-600"></i>
-                            <h3 class="text-lg font-bold text-slate-300">雲端資料庫中尚無符合條件的航班紀錄</h3>
-                            <p class="text-xs text-slate-500 max-w-md mx-auto">所有航班均由管理員於後台即時新增。若目前尚無資料，請由管理員登入後台建立航班。</p>
-                        </div>
-                    `;
-                    return;
-                }
-
-                container.innerHTML = filtered.map(flight => {
-                    // Calculate available seats dynamically
-                    const flightBookings = window.state.bookings.filter(b => b.flight_id === flight.id && b.status !== 'CANCELLED');
-                    const totalSeats = (flight.total_rows || 6) * 4;
-                    const availableSeats = totalSeats - flightBookings.length;
-                    const isClosed = flight.sales_open === false;
-
-                    return `
-                        <div class="bg-slate-900 border border-slate-800 hover:border-sky-500/50 transition-all duration-200 rounded-2xl p-5 sm:p-6 shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                            <div class="space-y-2 flex-grow">
-                                <div class="flex items-center space-x-3">
-                                    <span class="px-3 py-1 bg-sky-500/10 text-sky-400 font-bold font-mono rounded-lg text-xs border border-sky-500/20">${flight.flight_no}</span>
-                                    <span class="text-xs text-slate-400 font-medium"><i class="fa-solid fa-plane mr-1"></i>${flight.aircraft}</span>
-                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${flight.status?.includes('延誤') ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-400'}">${flight.status || '正常'}</span>
-                                </div>
-                                <div class="flex items-center space-x-4 pt-1">
-                                    <div>
-                                        <div class="text-xl sm:text-2xl font-black text-white">${flight.dep_time}</div>
-                                        <div class="text-xs text-slate-400">${flight.from_airport}</div>
-                                    </div>
-                                    <div class="flex flex-col items-center px-2">
-                                        <span class="text-[10px] text-slate-500">${flight.flight_date || ''}</span>
-                                        <div class="w-20 sm:w-28 h-0.5 bg-slate-700 relative my-1">
-                                            <i class="fa-solid fa-plane text-xs text-sky-400 absolute left-1/2 -top-2.5 -translate-x-1/2"></i>
-                                        </div>
-                                        <span class="text-[10px] text-sky-400 font-semibold">直飛</span>
-                                    </div>
-                                    <div>
-                                        <div class="text-xl sm:text-2xl font-black text-white">${flight.arr_time}</div>
-                                        <div class="text-xs text-slate-400">${flight.to_airport}</div>
-                                    </div>
-                                </div>
-                                <div class="flex items-center space-x-4 text-xs text-slate-400 pt-1">
-                                    <span>登機門：<strong class="text-white">${flight.gate || '待定'}</strong></span>
-                                    <span>艙等：<strong class="text-sky-300">${flight.cabin_class || '經濟艙'}</strong></span>
-                                    <span>剩餘座位：<strong class="${availableSeats > 0 ? 'text-emerald-400' : 'text-rose-400'}">${availableSeats} / ${totalSeats}</strong></span>
-                                </div>
-                            </div>
-                            <div class="flex flex-col items-end justify-center border-t md:border-t-0 md:border-l border-slate-800 pt-3 md:pt-0 md:pl-6 w-full md:w-auto">
-                                <span class="text-xs text-slate-400">單人票價</span>
-                                <div class="text-2xl font-black text-sky-400">NT$ ${Number(flight.price || 0).toLocaleString()}</div>
-                                <button onclick="app.startBookingWizard('${flight.id}')" ${availableSeats <= 0 || isClosed ? 'disabled' : ''} class="mt-2 w-full md:w-auto bg-sky-500 hover:bg-sky-400 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-950 font-bold px-6 py-2.5 rounded-xl shadow-lg transition text-xs sm:text-sm">
-                                    ${isClosed ? '停止販售' : (availableSeats <= 0 ? '已售罄' : '選擇航班預訂')}
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            },
-
-            startBookingWizard: (flightId) => {
-                const flight = window.state.flights.find(f => f.id === flightId);
-                if (!flight) return;
-
-                window.state.selectedFlightForBooking = flight;
-                window.state.selectedSeat = null;
-
-                // Render wizard flight summary
-                document.getElementById('wizard-flight-summary').innerHTML = `
-                    <div class="flex items-center space-x-4">
-                        <span class="px-3 py-1 bg-sky-500/20 text-sky-300 font-bold font-mono text-sm rounded-lg">${flight.flight_no}</span>
-                        <div>
-                            <span class="font-bold text-white text-base">${flight.from_airport} ➔ ${flight.to_airport}</span>
-                            <span class="text-xs block text-slate-400">日期：${flight.flight_date} | 起飛：${flight.dep_time} | 艙等：${flight.cabin_class}</span>
-                        </div>
+        // --- 首頁渲染 ---
+        function renderHomeFlightPreview() {
+            const container = document.getElementById('home-flight-preview');
+            if (!flightsData.length) {
+                container.innerHTML = `<div class="text-center text-slate-400 py-4 text-xs">目前無即時航班資訊</div>`;
+                return;
+            }
+            container.innerHTML = flightsData.slice(0, 3).map(f => `
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center text-xs">
+                    <div>
+                        <span class="font-black text-cva-blue">${f.flightNo}</span>
+                        <span class="text-slate-500 ml-2">${f.dep} ➔ ${f.arr}</span>
                     </div>
-                    <div class="text-right">
-                        <span class="text-xs text-slate-400">應付總額</span>
-                        <div class="text-xl font-black text-sky-400">NT$ ${Number(flight.price || 0).toLocaleString()}</div>
+                    <div>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${f.status === '正常' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">${f.status}</span>
                     </div>
-                `;
+                </div>
+            `).join('');
+        }
 
-                // Show step 1
-                document.getElementById('wizard-step-1').classList.remove('hidden');
-                document.getElementById('wizard-step-2').classList.add('hidden');
-                document.getElementById('wizard-step-3').classList.add('hidden');
+        // --- 搜尋航班與列表渲染 ---
+        window.handleSearchFlights = function(e) {
+            e.preventDefault();
+            renderFlights();
+            showToast("搜尋完成");
+        };
 
-                app.navigate('booking-wizard');
-            },
+        function renderFlights() {
+            const container = document.getElementById('flight-results-container');
+            const depTerm = document.getElementById('search-dep').value.trim().toLowerCase();
+            const arrTerm = document.getElementById('search-arr').value.trim().toLowerCase();
 
-            goToSeatMapStep: () => {
-                const name = document.getElementById('p-name').value.trim();
-                const nationality = document.getElementById('p-nationality').value.trim();
-                const gender = document.getElementById('p-gender').value;
+            const filtered = flightsData.filter(f => {
+                const matchDep = !depTerm || f.dep.toLowerCase().includes(depTerm);
+                const matchArr = !arrTerm || f.arr.toLowerCase().includes(arrTerm);
+                return matchDep && matchArr && f.isSelling;
+            });
 
-                if (!name || !nationality) {
-                    app.showToast("請填寫完整的旅客姓名與國籍資訊！", "fa-circle-exclamation");
-                    return;
-                }
+            if (!filtered.length) {
+                container.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-400">查無符合可販售之航班，請重新選擇出發與抵達機場。</div>`;
+                return;
+            }
 
-                window.state.passengerInfo = { name, gender, nationality };
-                app.renderSeatMatrix();
+            container.innerHTML = filtered.map(f => {
+                const occupiedSeats = f.occupiedSeats || [];
+                const remainingSeats = (f.capacity || 24) - occupiedSeats.length;
 
-                document.getElementById('wizard-step-1').classList.add('hidden');
-                document.getElementById('wizard-step-2').classList.remove('hidden');
-
-                // Update Step Nodes Styling
-                document.getElementById('step-node-2').className = "flex items-center space-x-2 text-sky-400 font-bold text-sm";
-            },
-
-            goToPassengerStep: () => {
-                document.getElementById('wizard-step-2').classList.add('hidden');
-                document.getElementById('wizard-step-1').classList.remove('hidden');
-            },
-
-            renderSeatMatrix: () => {
-                const flight = window.state.selectedFlightForBooking;
-                if (!flight) return;
-
-                const container = document.getElementById('seat-grid-container');
-                const flightBookings = window.state.bookings.filter(b => b.flight_id === flight.id && b.status !== 'CANCELLED');
-                const occupiedSeats = new Set(flightBookings.map(b => b.seat_number));
-
-                const rowsCount = flight.total_rows || 6;
-                const columns = ['A', 'B', 'C', 'D'];
-
-                let html = '';
-                for (let r = 1; r <= rowsCount; r++) {
-                    html += `<div class="flex items-center justify-between space-x-2">`;
-                    
-                    // Left 2 seats (A, B)
-                    for (let c = 0; c < 2; c++) {
-                        const seatCode = `${r}${columns[c]}`;
-                        const isTaken = occupiedSeats.has(seatCode);
-                        const isSelected = window.state.selectedSeat === seatCode;
-
-                        let btnStyle = "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/40";
-                        if (isTaken) btnStyle = "bg-slate-800 text-slate-600 border-slate-700 cursor-not-allowed opacity-50";
-                        if (isSelected) btnStyle = "bg-sky-500 text-slate-950 font-black border-sky-400 shadow-lg shadow-sky-500/50 scale-105";
-
-                        html += `<button onclick="app.selectSeat('${seatCode}')" ${isTaken ? 'disabled' : ''} class="w-12 h-10 rounded-xl border font-mono font-bold text-xs flex items-center justify-center transition-all ${btnStyle}">${seatCode}</button>`;
-                    }
-
-                    // Aisle
-                    html += `<div class="text-[10px] text-slate-600 font-mono w-6 text-center">${r}</div>`;
-
-                    // Right 2 seats (C, D)
-                    for (let c = 2; c < 4; c++) {
-                        const seatCode = `${r}${columns[c]}`;
-                        const isTaken = occupiedSeats.has(seatCode);
-                        const isSelected = window.state.selectedSeat === seatCode;
-
-                        let btnStyle = "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/40";
-                        if (isTaken) btnStyle = "bg-slate-800 text-slate-600 border-slate-700 cursor-not-allowed opacity-50";
-                        if (isSelected) btnStyle = "bg-sky-500 text-slate-950 font-black border-sky-400 shadow-lg shadow-sky-500/50 scale-105";
-
-                        html += `<button onclick="app.selectSeat('${seatCode}')" ${isTaken ? 'disabled' : ''} class="w-12 h-10 rounded-xl border font-mono font-bold text-xs flex items-center justify-center transition-all ${btnStyle}">${seatCode}</button>`;
-                    }
-
-                    html += `</div>`;
-                }
-
-                container.innerHTML = html;
-            },
-
-            selectSeat: (seatCode) => {
-                window.state.selectedSeat = seatCode;
-                document.getElementById('selected-seat-display').innerText = seatCode;
-                document.getElementById('confirm-booking-btn').removeAttribute('disabled');
-                app.renderSeatMatrix();
-            },
-
-            submitBooking: async () => {
-                if (!auth.currentUser) return;
-                const flight = window.state.selectedFlightForBooking;
-                const seat = window.state.selectedSeat;
-                const passenger = window.state.passengerInfo;
-
-                if (!flight || !seat || !passenger.name) return;
-
-                // Double check real-time availability
-                const currentConflict = window.state.bookings.find(b => b.flight_id === flight.id && b.seat_number === seat && b.status !== 'CANCELLED');
-                if (currentConflict) {
-                    app.showToast("此座位已被剛剛劃位鎖定，請選擇其他座位！", "fa-triangle-exclamation");
-                    app.renderSeatMatrix();
-                    return;
-                }
-
-                // Generate PNR
-                const pnr = "CVA" + Math.random().toString(36).substring(2, 6).toUpperCase();
-                const bookingDocData = {
-                    pnr: pnr,
-                    passenger_name: passenger.name,
-                    gender: passenger.gender,
-                    nationality: passenger.nationality,
-                    flight_id: flight.id,
-                    flight_no: flight.flight_no,
-                    from_airport: flight.from_airport,
-                    to_airport: flight.to_airport,
-                    flight_date: flight.flight_date,
-                    dep_time: flight.dep_time,
-                    arr_time: flight.arr_time,
-                    gate: flight.gate,
-                    cabin_class: flight.cabin_class,
-                    aircraft: flight.aircraft,
-                    seat_number: seat,
-                    price: flight.price,
-                    status: 'CONFIRMED',
-                    checkin_status: false,
-                    created_at: new Date().toISOString()
-                };
-
-                try {
-                    await addDoc(bookingsColRef, bookingDocData);
-
-                    // Render Ticket Screen
-                    app.renderTicketCard(bookingDocData, 'created-ticket-card');
-
-                    document.getElementById('wizard-step-2').classList.add('hidden');
-                    document.getElementById('wizard-step-3').classList.remove('hidden');
-                    document.getElementById('step-node-3').className = "flex items-center space-x-2 text-sky-400 font-bold text-sm";
-                    
-                    app.showToast(`訂票完成！您的訂位代號 (PNR) 為: ${pnr}`, "fa-circle-check");
-                } catch (err) {
-                    console.error("Booking write error:", err);
-                    app.showToast("訂票失敗，請確認網路連線。", "fa-circle-exclamation");
-                }
-            },
-
-            renderTicketCard: (booking, containerId) => {
-                const el = document.getElementById(containerId);
-                if (!el) return;
-
-                el.innerHTML = `
-                    <div class="bg-slate-900 border-2 border-sky-500/40 rounded-3xl overflow-hidden shadow-2xl">
-                        <div class="bg-gradient-to-r from-cva-600 to-sky-500 p-4 sm:p-5 flex justify-between items-center text-white">
+                return `
+                    <div class="bg-white rounded-2xl p-6 shadow-md border border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:shadow-lg transition">
+                        <div class="space-y-1">
                             <div class="flex items-center space-x-2">
-                                <i class="fa-solid fa-plane-up text-xl"></i>
-                                <span class="font-bold text-base tracking-wider">中華虛擬航空 E-TICKET</span>
+                                <span class="bg-cva-blue text-white text-xs px-2.5 py-1 rounded-md font-black">${f.flightNo}</span>
+                                <span class="text-xs text-slate-500 font-medium">${f.aircraft}</span>
+                                <span class="text-xs font-bold ${f.status === '正常' ? 'text-emerald-600' : 'text-red-500'}">● ${f.status}</span>
                             </div>
-                            <span class="font-mono font-bold text-lg bg-slate-950/40 px-3 py-1 rounded-xl">PNR: ${booking.pnr}</span>
+                            <div class="flex items-center space-x-4 pt-2">
+                                <div>
+                                    <div class="text-xl font-black text-slate-800">${f.depTime}</div>
+                                    <div class="text-xs text-slate-500 font-bold">${f.dep}</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-[10px] text-slate-400">直飛</div>
+                                    <i class="fa-solid fa-plane text-cva-gold"></i>
+                                </div>
+                                <div>
+                                    <div class="text-xl font-black text-slate-800">${f.arrTime}</div>
+                                    <div class="text-xs text-slate-500 font-bold">${f.arr}</div>
+                                </div>
+                            </div>
+                            <div class="text-xs text-slate-400 pt-1">出發日期：${f.date} | 登機門：${f.gate}</div>
                         </div>
-                        <div class="p-6 space-y-6">
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                                <div>
-                                    <span class="text-slate-400 block">旅客姓名</span>
-                                    <strong class="text-white text-sm">${booking.passenger_name}</strong>
-                                </div>
-                                <div>
-                                    <span class="text-slate-400 block">性別 / 國籍</span>
-                                    <strong class="text-white text-sm">${booking.gender} / ${booking.nationality}</strong>
-                                </div>
-                                <div>
-                                    <span class="text-slate-400 block">航班號</span>
-                                    <strong class="text-sky-400 font-mono text-sm">${booking.flight_no}</strong>
-                                </div>
-                                <div>
-                                    <span class="text-slate-400 block">預定座位</span>
-                                    <strong class="text-amber-400 font-mono text-sm">${booking.seat_number}</strong>
-                                </div>
+
+                        <div class="flex md:flex-col justify-between md:items-end w-full md:w-auto border-t md:border-t-0 pt-3 md:pt-0">
+                            <div class="text-left md:text-right">
+                                <div class="text-xs text-slate-400">標準經濟艙單程起</div>
+                                <div class="text-2xl font-black text-cva-blue">NT$ ${Number(f.price).toLocaleString()}</div>
+                                <div class="text-xs ${remainingSeats < 5 ? 'text-red-500 font-bold' : 'text-slate-500'}">剩餘 ${remainingSeats} 席</div>
                             </div>
-                            <div class="flex justify-between items-center bg-slate-800/80 rounded-2xl p-4 border border-slate-700">
-                                <div>
-                                    <span class="text-xs text-slate-400">${booking.flight_date}</span>
-                                    <div class="text-xl font-black text-white">${booking.dep_time}</div>
-                                    <div class="text-xs font-semibold text-sky-300">${booking.from_airport}</div>
-                                </div>
-                                <i class="fa-solid fa-plane text-slate-500 text-xl"></i>
-                                <div class="text-right">
-                                    <span class="text-xs text-slate-400">登機門：${booking.gate}</span>
-                                    <div class="text-xl font-black text-white">${booking.arr_time}</div>
-                                    <div class="text-xs font-semibold text-sky-300">${booking.to_airport}</div>
-                                </div>
-                            </div>
-                            <div class="flex flex-col items-center justify-center pt-2 space-y-2 border-t border-slate-800">
-                                <div class="barcode-strip w-full h-12 rounded opacity-80"></div>
-                                <span class="font-mono text-xs tracking-widest text-slate-500">*${booking.pnr}-${booking.seat_number}*</span>
-                            </div>
+                            <button onclick="startBooking('${f.id}')" ${remainingSeats === 0 ? 'disabled' : ''} class="mt-2 bg-cva-gold hover:bg-yellow-400 text-cva-blue font-black px-6 py-2.5 rounded-xl shadow transition disabled:opacity-50">
+                                ${remainingSeats === 0 ? '客滿' : '選擇航班劃位'}
+                            </button>
                         </div>
                     </div>
                 `;
-            },
+            }).join('');
+        }
 
-            handleQueryBooking: (e) => {
-                e.preventDefault();
-                const name = document.getElementById('query-name').value.trim();
-                const pnr = document.getElementById('query-pnr').value.trim().toUpperCase();
+        // --- 進入劃位與填寫頁面 ---
+        window.startBooking = function(flightId) {
+            selectedFlightForBooking = flightsData.find(f => f.id === flightId);
+            if (!selectedFlightForBooking) return;
 
-                const resultContainer = document.getElementById('my-booking-result');
-                resultContainer.classList.remove('hidden');
+            currentSelectedSeat = null;
+            document.getElementById('selected-seat-display').innerText = '已選座位：未選擇';
 
-                const found = window.state.bookings.find(b => b.pnr === pnr && b.passenger_name === name);
+            // 渲染選定航班摘要
+            document.getElementById('selected-flight-summary').innerHTML = `
+                <div>
+                    <span class="font-black text-cva-blue text-lg">${selectedFlightForBooking.flightNo}</span>
+                    <span class="text-xs text-slate-600 ml-2">${selectedFlightForBooking.dep} ➔ ${selectedFlightForBooking.arr}</span>
+                    <div class="text-xs text-slate-500">日期：${selectedFlightForBooking.date} | 時間：${selectedFlightForBooking.depTime} - ${selectedFlightForBooking.arrTime}</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-slate-400">票價</div>
+                    <div class="text-xl font-black text-cva-blue">NT$ ${Number(selectedFlightForBooking.price).toLocaleString()}</div>
+                </div>
+            `;
 
-                if (!found) {
-                    resultContainer.innerHTML = `
-                        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-2">
-                            <i class="fa-solid fa-file-circle-xmark text-4xl text-amber-400"></i>
-                            <h3 class="text-lg font-bold text-white">查無符合的訂票紀錄</h3>
-                            <p class="text-xs text-slate-400">請確認輸入之姓名與 PNR 訂位代號是否相符，或先前往完成訂票。</p>
-                        </div>
+            // 繪製劃位圖 (24席 4x6)
+            renderSeatMap(selectedFlightForBooking.occupiedSeats || []);
+            switchTab('booking');
+        };
+
+        function renderSeatMap(occupiedSeats) {
+            const container = document.getElementById('seat-map-grid');
+            const rows = 6;
+            const cols = ['A', 'B', 'C', 'D'];
+            let html = '';
+
+            for (let r = 1; r <= rows; r++) {
+                html += `<div class="flex items-center space-x-3">`;
+                cols.forEach((col, idx) => {
+                    if (idx === 2) html += `<div class="w-6 text-center text-xs text-slate-300 font-bold">走道</div>`;
+                    const seatId = `${r}${col}`;
+                    const isOccupied = occupiedSeats.includes(seatId);
+
+                    html += `
+                        <button onclick="selectSeat('${seatId}')" ${isOccupied ? 'disabled' : ''} 
+                            id="seat-btn-${seatId}" 
+                            class="seat w-10 h-10 rounded-lg text-xs font-bold border flex items-center justify-center ${isOccupied ? 'occupied' : 'available'}">
+                            ${seatId}
+                        </button>
                     `;
-                    return;
-                }
+                });
+                html += `</div>`;
+            }
+            container.innerHTML = html;
+        }
 
-                resultContainer.innerHTML = `
-                    <div id="booking-card-detail"></div>
-                    <div class="flex justify-center space-x-4">
-                        ${found.checkin_status ? `
-                            <button onclick="app.showBoardingPassModal('${found.id}')" class="px-6 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm shadow-lg"><i class="fa-solid fa-passport mr-2"></i>檢視電子登機證</button>
-                        ` : `
-                            <button onclick="app.quickStartCheckIn('${found.pnr}', '${found.passenger_name}')" class="px-6 py-2.5 rounded-xl bg-sky-500 text-slate-950 font-bold text-sm shadow-lg"><i class="fa-solid fa-plane-departure mr-2"></i>前往線上 Check-in</button>
-                        `}
+        window.selectSeat = function(seatId) {
+            if (currentSelectedSeat) {
+                const prevBtn = document.getElementById(`seat-btn-${currentSelectedSeat}`);
+                if (prevBtn) {
+                    prevBtn.classList.remove('selected');
+                    prevBtn.classList.add('available');
+                }
+            }
+
+            currentSelectedSeat = seatId;
+            const currentBtn = document.getElementById(`seat-btn-${seatId}`);
+            currentBtn.classList.remove('available');
+            currentBtn.classList.add('selected');
+
+            document.getElementById('selected-seat-display').innerText = `已選座位：${seatId}`;
+        };
+
+        // --- 提交訂票與產生 PNR ---
+        window.submitBooking = async function() {
+            const name = document.getElementById('passenger-name').value.trim().toUpperCase();
+            const gender = document.getElementById('passenger-gender').value;
+            const nationality = document.getElementById('passenger-nationality').value.trim();
+
+            if (!name) return showToast("請填寫旅客英文姓名", "error");
+            if (!currentSelectedSeat) return showToast("請點擊座位圖進行劃位", "error");
+
+            const pnr = "CVA" + Math.random().toString(36).substring(2, 5).toUpperCase();
+            const bookingId = `bk_${Date.now()}`;
+
+            const newBooking = {
+                id: bookingId,
+                pnr: pnr,
+                name: name,
+                gender: gender,
+                nationality: nationality,
+                flightId: selectedFlightForBooking.id,
+                flightNo: selectedFlightForBooking.flightNo,
+                dep: selectedFlightForBooking.dep,
+                arr: selectedFlightForBooking.arr,
+                date: selectedFlightForBooking.date,
+                depTime: selectedFlightForBooking.depTime,
+                arrTime: selectedFlightForBooking.arrTime,
+                gate: selectedFlightForBooking.gate,
+                aircraft: selectedFlightForBooking.aircraft,
+                seat: currentSelectedSeat,
+                cabin: document.getElementById('search-cabin').value,
+                status: '已訂票',
+                isCheckedIn: false,
+                createdAt: new Date().toISOString()
+            };
+
+            try {
+                const bookingRef = doc(db, 'artifacts', appId, 'public', 'data', 'bookings', bookingId);
+                await setDoc(bookingRef, newBooking);
+
+                const flightRef = doc(db, 'artifacts', appId, 'public', 'data', 'flights', selectedFlightForBooking.id);
+                const updatedSeats = [...(selectedFlightForBooking.occupiedSeats || []), currentSelectedSeat];
+                await updateDoc(flightRef, { occupiedSeats: updatedSeats });
+
+                showToast(`訂票成功！您的訂位代號 (PNR) 為：${pnr}`, "success");
+
+                document.getElementById('query-name').value = name;
+                document.getElementById('query-pnr').value = pnr;
+                switchTab('my-orders');
+                fetchAndDisplayOrder(name, pnr);
+
+            } catch (err) {
+                console.error(err);
+                showToast("訂票失敗，請重試", "error");
+            }
+        };
+
+        // --- 查詢我的訂單 ---
+        window.handleQueryOrder = function(e) {
+            e.preventDefault();
+            const name = document.getElementById('query-name').value.trim().toUpperCase();
+            const pnr = document.getElementById('query-pnr').value.trim().toUpperCase();
+            fetchAndDisplayOrder(name, pnr);
+        };
+
+        function fetchAndDisplayOrder(name, pnr) {
+            const card = document.getElementById('order-result-card');
+            const found = bookingsData.find(b => b.pnr === pnr && b.name.toUpperCase() === name);
+
+            if (!found) {
+                card.classList.add('hidden');
+                showToast("查無符合之訂購紀錄，請確認姓名與 PNR", "error");
+                return;
+            }
+
+            card.classList.remove('hidden');
+            card.innerHTML = `
+                <div class="bg-cva-blue text-white p-6 sm:p-8 relative overflow-hidden">
+                    <div class="flex justify-between items-start relative z-10">
+                        <div>
+                            <span class="text-xs text-cva-gold font-bold tracking-widest uppercase">中華虛擬航空 電子機票 (E-TICKET)</span>
+                            <h3 class="text-2xl font-black">${found.flightNo}</h3>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs text-slate-300">PNR 訂位代號</span>
+                            <div class="text-2xl font-black text-cva-gold tracking-widest">${found.pnr}</div>
+                        </div>
                     </div>
-                `;
+                </div>
 
-                app.renderTicketCard(found, 'booking-card-detail');
-            },
+                <div class="p-6 sm:p-8 space-y-6">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs border-b pb-4">
+                        <div><span class="text-slate-400 block">旅客姓名</span><span class="font-bold text-slate-800 text-sm">${found.name}</span></div>
+                        <div><span class="text-slate-400 block">性別/國籍</span><span class="font-bold text-slate-800">${found.gender} / ${found.nationality}</span></div>
+                        <div><span class="text-slate-400 block">艙等</span><span class="font-bold text-slate-800">${found.cabin}</span></div>
+                        <div><span class="text-slate-400 block">劃位座位</span><span class="font-bold text-cva-blue text-base">${found.seat}</span></div>
+                    </div>
 
-            quickStartCheckIn: (pnr, name) => {
-                document.getElementById('checkin-name').value = name;
-                document.getElementById('checkin-pnr').value = pnr;
-                app.navigate('checkin');
-            },
-
-            handleCheckInStart: (e) => {
-                e.preventDefault();
-                const name = document.getElementById('checkin-name').value.trim();
-                const pnr = document.getElementById('checkin-pnr').value.trim().toUpperCase();
-
-                const processArea = document.getElementById('checkin-process-area');
-                processArea.classList.remove('hidden');
-
-                const booking = window.state.bookings.find(b => b.pnr === pnr && b.passenger_name === name);
-
-                if (!booking) {
-                    processArea.innerHTML = `
-                        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-2">
-                            <i class="fa-solid fa-triangle-exclamation text-4xl text-rose-400"></i>
-                            <h3 class="text-lg font-bold text-white">查無訂票資料，請先完成訂票</h3>
-                            <p class="text-xs text-slate-400">根據系統規則，未完成訂票者不可辦理 Check-in。</p>
+                    <div class="flex justify-between items-center bg-slate-50 p-4 rounded-xl">
+                        <div>
+                            <div class="text-xl font-black text-slate-800">${found.depTime}</div>
+                            <div class="text-xs font-bold text-slate-500">${found.dep}</div>
                         </div>
-                    `;
-                    return;
-                }
-
-                // Check flight counter status from flight object
-                const flight = window.state.flights.find(f => f.id === booking.flight_id);
-                if (flight && flight.checkin_open === false) {
-                    processArea.innerHTML = `
-                        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-2">
-                            <i class="fa-solid fa-clock-rotate-left text-4xl text-amber-400"></i>
-                            <h3 class="text-lg font-bold text-white">該航班 Check-in 櫃檯尚未開放或已關閉</h3>
-                            <p class="text-xs text-slate-400">管理員控制台目前關閉此航班報到功能，請稍後再試。</p>
+                        <i class="fa-solid fa-plane text-cva-gold text-lg"></i>
+                        <div class="text-right">
+                            <div class="text-xl font-black text-slate-800">${found.arrTime}</div>
+                            <div class="text-xs font-bold text-slate-500">${found.arr}</div>
                         </div>
-                    `;
-                    return;
-                }
+                    </div>
 
-                if (booking.checkin_status) {
-                    // Already checked in, render Boarding pass directly
-                    app.renderBoardingPassUI(booking, processArea);
-                    return;
-                }
+                    <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-2">
+                        <div>
+                            <div class="text-xs text-slate-400">Check-in 報到狀態</div>
+                            <span class="inline-block px-3 py-1 rounded-full text-xs font-bold ${found.isCheckedIn ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
+                                ${found.isCheckedIn ? '已完成 Check-in' : '尚未報到'}
+                            </span>
+                        </div>
+                        <div class="flex space-x-2">
+                            ${!found.isCheckedIn ? `
+                                <button onclick="gotoCheckinFromOrder('${found.name}', '${found.pnr}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow transition">
+                                    前往 Check-in
+                                </button>
+                            ` : `
+                                <button onclick="gotoCheckinFromOrder('${found.name}', '${found.pnr}')" class="bg-cva-blue text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow transition">
+                                    查看電子登機證
+                                </button>
+                            `}
+                        </div>
+                    </div>
 
-                // Ask confirmation to complete Check-in
-                processArea.innerHTML = `
-                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6">
-                        <div class="border-b border-slate-800 pb-4">
-                            <h3 class="text-xl font-bold text-white flex items-center"><i class="fa-solid fa-passport text-sky-400 mr-2"></i>核對 Check-in 報到資訊</h3>
-                            <p class="text-xs text-slate-400 mt-1">請核對個人資訊與劃位，確認後點擊「完成報到」即可生成電子登機證。</p>
-                        </div>
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                            <div><span class="text-slate-500 block">旅客姓名</span><strong class="text-white text-base">${booking.passenger_name}</strong></div>
-                            <div><span class="text-slate-500 block">航班編號</span><strong class="text-sky-400 font-mono text-base">${booking.flight_no}</strong></div>
-                            <div><span class="text-slate-500 block">劃位座位</span><strong class="text-amber-400 font-mono text-base">${booking.seat_number}</strong></div>
-                            <div><span class="text-slate-500 block">登機門 Gate</span><strong class="text-white font-mono text-base">${booking.gate}</strong></div>
-                        </div>
-                        <button onclick="app.confirmCheckIn('${booking.id}')" class="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black py-3 rounded-2xl transition shadow-xl shadow-emerald-500/20 text-base">
-                            <i class="fa-solid fa-circle-check mr-2"></i>確認資料無誤，完成 Check-in 報到
+                    <div class="border-t pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <svg id="ticket-barcode" class="max-w-[200px]"></svg>
+                        <div id="ticket-qrcode"></div>
+                    </div>
+                </div>
+            `;
+
+            setTimeout(() => {
+                JsBarcode("#ticket-barcode", found.pnr, { format: "CODE128", height: 40, displayValue: true });
+                document.getElementById('ticket-qrcode').innerHTML = '';
+                new QRCode(document.getElementById('ticket-qrcode'), { text: `CVA-TICKET:${found.pnr}:${found.name}`, width: 70, height: 70 });
+            }, 100);
+        }
+
+        window.gotoCheckinFromOrder = function(name, pnr) {
+            document.getElementById('checkin-name').value = name;
+            document.getElementById('checkin-pnr').value = pnr;
+            switchTab('checkin');
+            executeCheckInValidation(name, pnr);
+        };
+
+        // --- Check-in 報到邏輯 ---
+        window.handleCheckInQuery = function(e) {
+            e.preventDefault();
+            const name = document.getElementById('checkin-name').value.trim().toUpperCase();
+            const pnr = document.getElementById('checkin-pnr').value.trim().toUpperCase();
+            executeCheckInValidation(name, pnr);
+        };
+
+        function executeCheckInValidation(name, pnr) {
+            const card = document.getElementById('checkin-action-card');
+            const found = bookingsData.find(b => b.pnr === pnr && b.name.toUpperCase() === name);
+
+            if (!found) {
+                card.classList.add('hidden');
+                showToast("查無訂票資料，請先完成訂票。", "error");
+                return;
+            }
+
+            const flight = flightsData.find(f => f.id === found.flightId);
+            if (flight && flight.isCheckinOpen === false) {
+                card.classList.add('hidden');
+                showToast("此航班目前管理員尚未開放 Check-in 報到，請稍後再試。", "error");
+                return;
+            }
+
+            card.classList.remove('hidden');
+
+            if (found.isCheckedIn) {
+                renderBoardingPass(found, flight);
+            } else {
+                card.innerHTML = `
+                    <div class="border-b pb-4">
+                        <h3 class="text-xl font-bold text-cva-blue">確認旅客報到資訊</h3>
+                        <p class="text-xs text-slate-500">請確認資料無誤後完成線上報到手續</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
+                        <div><span class="text-slate-400 block">旅客姓名</span><span class="font-bold text-slate-800 text-sm">${found.name}</span></div>
+                        <div><span class="text-slate-400 block">航班號碼</span><span class="font-bold text-cva-blue text-sm">${found.flightNo}</span></div>
+                        <div><span class="text-slate-400 block">登機門 Gate</span><span class="font-bold text-slate-800 text-sm">${found.gate}</span></div>
+                        <div><span class="text-slate-400 block">航線</span><span class="font-bold text-slate-800">${found.dep} ➔ ${found.arr}</span></div>
+                        <div><span class="text-slate-400 block">劃位座位</span><span class="font-bold text-emerald-600 text-sm">${found.seat}</span></div>
+                        <div><span class="text-slate-400 block">執飛機型</span><span class="font-bold text-slate-800">${found.aircraft}</span></div>
+                    </div>
+
+                    <div class="pt-4 flex justify-end">
+                        <button onclick="confirmCheckIn('${found.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition flex items-center space-x-2">
+                            <i class="fa-solid fa-plane-departure"></i><span>確認並完成線上 Check-in</span>
                         </button>
                     </div>
                 `;
-            },
+            }
+        }
 
-            confirmCheckIn: async (bookingId) => {
-                if (!auth.currentUser) return;
+        window.confirmCheckIn = async function(bookingId) {
+            try {
+                const bookingRef = doc(db, 'artifacts', appId, 'public', 'data', 'bookings', bookingId);
+                const boardingPassNo = "BP" + Math.floor(100000 + Math.random() * 900000);
+                
+                await updateDoc(bookingRef, {
+                    isCheckedIn: true,
+                    boardingPassNo: boardingPassNo,
+                    checkInTime: new Date().toISOString()
+                });
 
-                const boardingPassNo = "BP" + Math.random().toString(36).substring(2, 8).toUpperCase();
-                const bookingDoc = doc(db, 'artifacts', appId, 'public', 'data', 'bookings', bookingId);
+                showToast("Check-in 報到成功！已核發電子登機證", "success");
+                
+                const updatedBooking = bookingsData.find(b => b.id === bookingId);
+                const flight = flightsData.find(f => f.id === updatedBooking.flightId);
+                renderBoardingPass({ ...updatedBooking, isCheckedIn: true, boardingPassNo }, flight);
 
-                try {
-                    await updateDoc(bookingDoc, {
-                        checkin_status: true,
-                        boarding_pass_no: boardingPassNo,
-                        checkin_time: new Date().toISOString()
-                    });
+            } catch (err) {
+                console.error(err);
+                showToast("報到失敗，請重試", "error");
+            }
+        };
 
-                    app.showToast("Check-in 成功！已生成電子登機證。", "fa-circle-check");
-                    
-                    const updatedBooking = window.state.bookings.find(b => b.id === bookingId);
-                    const processArea = document.getElementById('checkin-process-area');
-                    app.renderBoardingPassUI(updatedBooking || { id: bookingId, checkin_status: true, boarding_pass_no: boardingPassNo }, processArea);
-                } catch (err) {
-                    console.error("Checkin update error:", err);
-                    app.showToast("報到更新失敗，請重新嘗試。", "fa-circle-exclamation");
-                }
-            },
-
-            renderBoardingPassUI: (booking, container) => {
-                // Boarding time calculation (e.g. 40 mins prior to dep)
-                let boardingTime = '登機前 40 分鐘';
-                if (booking.dep_time) {
-                    const parts = booking.dep_time.split(':');
-                    if (parts.length === 2) {
-                        let m = parseInt(parts[1]) - 40;
-                        let h = parseInt(parts[0]);
-                        if (m < 0) { m += 60; h = (h - 1 + 24) % 24; }
-                        boardingTime = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                    }
-                }
-
-                container.innerHTML = `
-                    <div class="bg-slate-900 border-2 border-emerald-500/50 rounded-3xl overflow-hidden shadow-2xl">
-                        <div class="bg-gradient-to-r from-emerald-600 to-teal-600 p-4 sm:p-5 flex justify-between items-center text-slate-950 font-bold">
-                            <div class="flex items-center space-x-2">
-                                <i class="fa-solid fa-passport text-xl"></i>
-                                <span class="tracking-wider text-base">CVA OFFICIAL BOARDING PASS</span>
-                            </div>
-                            <span class="text-xs bg-slate-950/20 px-3 py-1 rounded-full text-slate-900 font-extrabold">STATUS: CHECKED-IN</span>
+        function renderBoardingPass(booking, flight) {
+            const card = document.getElementById('checkin-action-card');
+            card.innerHTML = `
+                <div class="bg-emerald-800 text-white p-6 rounded-2xl relative overflow-hidden shadow-xl">
+                    <div class="flex justify-between items-center border-b border-emerald-600/50 pb-4">
+                        <div>
+                            <div class="text-xs text-emerald-300 font-bold uppercase tracking-wider">BOARDING PASS 電子登機證</div>
+                            <div class="text-2xl font-black">${booking.flightNo}</div>
                         </div>
-                        <div class="p-6 space-y-6">
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                                <div><span class="text-slate-400 block">PASSENGER</span><strong class="text-white text-sm sm:text-base">${booking.passenger_name}</strong></div>
-                                <div><span class="text-slate-400 block">FLIGHT</span><strong class="text-sky-400 font-mono text-sm sm:text-base">${booking.flight_no}</strong></div>
-                                <div><span class="text-slate-400 block">GATE</span><strong class="text-emerald-400 font-mono text-sm sm:text-base">${booking.gate || 'A7'}</strong></div>
-                                <div><span class="text-slate-400 block">SEAT</span><strong class="text-amber-400 font-mono text-sm sm:text-base">${booking.seat_number}</strong></div>
-                            </div>
-                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 bg-slate-800/80 rounded-2xl p-4 border border-slate-700 text-xs">
-                                <div><span class="text-slate-400 block">BOARDING TIME</span><strong class="text-white font-mono text-base">${boardingTime}</strong></div>
-                                <div><span class="text-slate-400 block">DEPARTURE</span><strong class="text-white font-mono text-base">${booking.dep_time}</strong></div>
-                                <div><span class="text-slate-400 block">BP NUMBER</span><strong class="text-sky-300 font-mono text-xs">${booking.boarding_pass_no || 'BP-SYNCED'}</strong></div>
-                            </div>
-                            <div class="flex flex-col items-center justify-center pt-2 space-y-3">
-                                <div class="barcode-strip w-full h-14 rounded"></div>
-                                <span class="font-mono text-xs text-slate-400">SHOW THIS ELECTRONIC PASS AT BOARDING GATE</span>
-                            </div>
+                        <div class="text-right">
+                            <div class="text-xs text-emerald-300">登機證號</div>
+                            <div class="text-lg font-mono font-bold">${booking.boardingPassNo || 'BP882910'}</div>
                         </div>
                     </div>
-                `;
-            },
 
-            showBoardingPassModal: (bookingId) => {
-                const booking = window.state.bookings.find(b => b.id === bookingId);
-                if (!booking) return;
-                app.navigate('checkin');
-                const processArea = document.getElementById('checkin-process-area');
-                processArea.classList.remove('hidden');
-                app.renderBoardingPassUI(booking, processArea);
-            },
-
-            renderAnnouncements: () => {
-                const container = document.getElementById('announcements-list');
-                if (!container) return;
-
-                if (window.state.announcements.length === 0) {
-                    container.innerHTML = `
-                        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-slate-500 text-sm">
-                            目前無即時公告訊息。
-                        </div>
-                    `;
-                    return;
-                }
-
-                container.innerHTML = window.state.announcements.map(a => `
-                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
-                        <div class="flex justify-between items-center">
-                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/30">${a.tag || '系統公告'}</span>
-                            <span class="text-[10px] text-slate-500">${a.created_at ? new Date(a.created_at).toLocaleDateString() : ''}</span>
-                        </div>
-                        <h4 class="text-base font-bold text-white">${a.title}</h4>
-                        <p class="text-xs text-slate-300 leading-relaxed">${a.content}</p>
+                    <div class="grid grid-cols-3 sm:grid-cols-6 gap-3 text-xs pt-4">
+                        <div><span class="text-emerald-300 block">PASSENGER</span><span class="font-bold">${booking.name}</span></div>
+                        <div><span class="text-emerald-300 block">GATE</span><span class="font-black text-base text-cva-gold">${booking.gate}</span></div>
+                        <div><span class="text-emerald-300 block">SEAT</span><span class="font-black text-base text-cva-gold">${booking.seat}</span></div>
+                        <div><span class="text-emerald-300 block">ZONE</span><span class="font-bold">ZONE 1</span></div>
+                        <div><span class="text-emerald-300 block">TIME</span><span class="font-bold">${booking.depTime}</span></div>
+                        <div><span class="text-emerald-300 block">DATE</span><span class="font-bold">${booking.date}</span></div>
                     </div>
-                `).join('');
-            },
 
-            openAddAnnouncementModal: () => {
-                document.getElementById('modal-add-announcement').classList.remove('hidden');
-            },
-            closeAddAnnouncementModal: () => {
-                document.getElementById('modal-add-announcement').classList.add('hidden');
-            },
-            handleCreateAnnouncement: async (e) => {
-                e.preventDefault();
-                if (!auth.currentUser) return;
+                    <div class="mt-6 bg-white rounded-xl p-4 text-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <svg id="bp-barcode" class="max-w-[180px]"></svg>
+                        <div id="bp-qrcode"></div>
+                    </div>
+                </div>
+            `;
 
-                const title = document.getElementById('ma-title').value.trim();
-                const tag = document.getElementById('ma-tag').value;
-                const content = document.getElementById('ma-content').value.trim();
+            setTimeout(() => {
+                JsBarcode("#bp-barcode", booking.boardingPassNo || booking.pnr, { format: "CODE128", height: 35, displayValue: true });
+                document.getElementById('bp-qrcode').innerHTML = '';
+                new QRCode(document.getElementById('bp-qrcode'), { text: `CVA-BP:${booking.boardingPassNo}:${booking.seat}`, width: 60, height: 60 });
+            }, 100);
+        }
 
-                try {
-                    await addDoc(announcementsColRef, {
-                        title, tag, content,
-                        created_at: new Date().toISOString()
-                    });
-                    app.closeAddAnnouncementModal();
-                    app.showToast("公告已成功發布！", "fa-circle-check");
-                } catch (err) {
-                    console.error("Announcement error:", err);
-                }
-            },
+        // --- 管理員權限與 Modal ---
+        window.openAdminModal = function() {
+            if (isAdminLoggedIn) {
+                switchTab('admin');
+            } else {
+                document.getElementById('admin-login-modal').classList.remove('hidden');
+            }
+        };
 
-            renderAdminDashboard: () => {
-                if (!window.state.isAdmin) return;
+        window.closeAdminModal = function() {
+            document.getElementById('admin-login-modal').classList.add('hidden');
+        };
 
-                const flights = window.state.flights;
-                const bookings = window.state.bookings;
+        window.verifyAdminLogin = function() {
+            const pass = document.getElementById('admin-pass-input').value;
+            if (pass === 'cva2026') {
+                isAdminLoggedIn = true;
+                closeAdminModal();
+                switchTab('admin');
+                renderAdminTables();
+                showToast("管理員驗證成功", "success");
+            } else {
+                showToast("密碼錯誤！存取拒絕", "error");
+            }
+        };
 
-                // Total bookings
-                document.getElementById('admin-stat-total-bookings').innerText = bookings.length;
-                document.getElementById('admin-stat-active-flights').innerText = flights.length;
+        window.logoutAdmin = function() {
+            isAdminLoggedIn = false;
+            switchTab('home');
+            showToast("已退出管理員後台");
+        };
 
-                // Cancelled bookings
-                const cancelled = bookings.filter(b => b.status === 'CANCELLED').length;
-                document.getElementById('admin-stat-cancelled').innerText = cancelled;
+        window.switchAdminSubTab = function(sub) {
+            document.getElementById('admin-sub-booking').classList.add('hidden');
+            document.getElementById('admin-sub-checkin').classList.add('hidden');
+            document.getElementById(`admin-sub-${sub.split('-')[0]}`).classList.remove('hidden');
 
-                // Total capacity & Sales Rate calculation
-                let totalSeatsCapacity = 0;
-                flights.forEach(f => { totalSeatsCapacity += (f.total_rows || 6) * 4; });
-                const validBookings = bookings.filter(b => b.status !== 'CANCELLED').length;
-                const salesRate = totalSeatsCapacity > 0 ? Math.round((validBookings / totalSeatsCapacity) * 100) : 0;
-                document.getElementById('admin-stat-sales-rate').innerText = `${salesRate}%`;
+            document.getElementById('btn-sub-booking').className = sub.startsWith('booking') ? 
+                "px-4 py-2 rounded-xl text-sm font-bold bg-cva-gold text-cva-blue shadow" : "px-4 py-2 rounded-xl text-sm font-bold bg-white/10 hover:bg-white/20 text-white";
+            document.getElementById('btn-sub-checkin').className = sub.startsWith('checkin') ? 
+                "px-4 py-2 rounded-xl text-sm font-bold bg-cva-gold text-cva-blue shadow" : "px-4 py-2 rounded-xl text-sm font-bold bg-white/10 hover:bg-white/20 text-white";
+        };
 
-                // Check-in Stats
-                const checkInCount = bookings.filter(b => b.checkin_status === true).length;
-                const pendingCheckIn = validBookings - checkInCount;
-                const checkInRate = validBookings > 0 ? Math.round((checkInCount / validBookings) * 100) : 0;
-                const openCounterFlights = flights.filter(f => f.checkin_open !== false).length;
+        // --- 後台數據計算與表格渲染 ---
+        function renderAdminTables() {
+            if (!isAdminLoggedIn) return;
 
-                document.getElementById('admin-stat-checkin-count').innerText = checkInCount;
-                document.getElementById('admin-stat-pending-checkin').innerText = pendingCheckIn;
-                document.getElementById('admin-stat-checkin-rate').innerText = `${checkInRate}%`;
-                document.getElementById('admin-stat-open-counter-flights').innerText = openCounterFlights;
+            const totalBookings = bookingsData.length;
+            const activeFlights = flightsData.filter(f => f.status === '正常').length;
+            const cancelledFlights = flightsData.filter(f => f.status !== '正常').length;
+            const totalCapacity = flightsData.reduce((acc, f) => acc + (f.capacity || 24), 0);
+            const bookingRate = totalCapacity > 0 ? Math.round((totalBookings / totalCapacity) * 100) : 0;
 
-                app.renderAdminFlightsTable();
-                app.renderAdminBookingsTable();
-                app.renderAdminCheckinCounterCards();
-                app.renderAdminCheckinTable();
-            },
+            document.getElementById('dash-total-bookings').innerText = totalBookings;
+            document.getElementById('dash-active-flights').innerText = activeFlights;
+            document.getElementById('dash-cancelled-flights').innerText = cancelledFlights;
+            document.getElementById('dash-booking-rate').innerText = `${bookingRate}%`;
 
-            switchAdminTab: (tab) => {
-                window.state.adminSubTab = tab;
-                if (tab === 'flights') {
-                    document.getElementById('admin-subview-flights').classList.remove('hidden');
-                    document.getElementById('admin-subview-bookings').classList.add('hidden');
-                    document.getElementById('admin-tab-btn-flights').className = "px-4 py-2 rounded-lg text-sm font-bold bg-slate-800 text-sky-400";
-                    document.getElementById('admin-tab-btn-bookings').className = "px-4 py-2 rounded-lg text-sm font-bold text-slate-400 hover:text-white";
-                } else {
-                    document.getElementById('admin-subview-flights').classList.add('hidden');
-                    document.getElementById('admin-subview-bookings').classList.remove('hidden');
-                    document.getElementById('admin-tab-btn-bookings').className = "px-4 py-2 rounded-lg text-sm font-bold bg-slate-800 text-sky-400";
-                    document.getElementById('admin-tab-btn-flights').className = "px-4 py-2 rounded-lg text-sm font-bold text-slate-400 hover:text-white";
-                }
-            },
+            const checkedInCount = bookingsData.filter(b => b.isCheckedIn).length;
+            const uncheckedCount = totalBookings - checkedInCount;
+            const checkinRate = totalBookings > 0 ? Math.round((checkedInCount / totalBookings) * 100) : 0;
+            const openCheckinFlights = flightsData.filter(f => f.isCheckinOpen !== false).length;
 
-            openAddFlightModal: () => {
-                document.getElementById('modal-add-flight').classList.remove('hidden');
-            },
-            closeAddFlightModal: () => {
-                document.getElementById('modal-add-flight').classList.add('hidden');
-            },
-            handleCreateFlight: async (e) => {
-                e.preventDefault();
-                if (!auth.currentUser) return;
+            document.getElementById('dash-checked-in-count').innerText = checkedInCount;
+            document.getElementById('dash-unchecked-count').innerText = uncheckedCount;
+            document.getElementById('dash-checkin-rate').innerText = `${checkinRate}%`;
+            document.getElementById('dash-open-checkin-flights').innerText = openCheckinFlights;
 
-                const flightData = {
-                    flight_no: document.getElementById('mf-flight-no').value.trim().toUpperCase(),
-                    aircraft: document.getElementById('mf-aircraft').value.trim(),
-                    from_airport: document.getElementById('mf-from').value.trim(),
-                    to_airport: document.getElementById('mf-to').value.trim(),
-                    flight_date: document.getElementById('mf-date').value,
-                    dep_time: document.getElementById('mf-dep-time').value,
-                    arr_time: document.getElementById('mf-arr-time').value,
-                    gate: document.getElementById('mf-gate').value.trim().toUpperCase(),
-                    cabin_class: document.getElementById('mf-cabin').value,
-                    total_rows: parseInt(document.getElementById('mf-total-rows').value) || 6,
-                    price: parseFloat(document.getElementById('mf-price').value) || 0,
-                    status: document.getElementById('mf-status').value,
-                    sales_open: true,
-                    checkin_open: true,
-                    created_at: new Date().toISOString()
-                };
-
-                try {
-                    await addDoc(flightsColRef, flightData);
-                    app.closeAddFlightModal();
-                    app.showToast("新航班建立完成並已同步！", "fa-circle-check");
-                } catch (err) {
-                    console.error("Create flight error:", err);
-                    app.showToast("建立失敗，請檢視主機連線。", "fa-circle-exclamation");
-                }
-            },
-
-            toggleFlightSales: async (flightId, currentStatus) => {
-                if (!auth.currentUser) return;
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'flights', flightId);
-                await updateDoc(docRef, { sales_open: !currentStatus });
-                app.showToast("已更新航班訂票販售開關！");
-            },
-
-            deleteFlight: async (flightId) => {
-                if (!auth.currentUser) return;
-                if (!confirm("確定要從全網雲端資料庫刪除此航班紀錄？")) return;
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'flights', flightId);
-                await deleteDoc(docRef);
-                app.showToast("航班紀錄已刪除。");
-            },
-
-            renderAdminFlightsTable: () => {
-                const tbody = document.getElementById('admin-flights-table-body');
-                if (!tbody) return;
-
-                if (window.state.flights.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500">尚無航班資料</td></tr>`;
-                    return;
-                }
-
-                tbody.innerHTML = window.state.flights.map(f => {
-                    const totalSeats = (f.total_rows || 6) * 4;
-                    const isSalesOpen = f.sales_open !== false;
-
+            const flightTbody = document.getElementById('admin-flight-table-body');
+            if (!flightsData.length) {
+                flightTbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400">目前資料庫無任何航班，請點擊新增。</td></tr>`;
+            } else {
+                flightTbody.innerHTML = flightsData.map(f => {
+                    const occupiedCount = (f.occupiedSeats || []).length;
                     return `
-                        <tr>
-                            <td class="p-3 font-mono font-bold text-sky-400">${f.flight_no}<div class="text-[10px] text-slate-400 font-normal">${f.aircraft}</div></td>
-                            <td class="p-3">${f.from_airport} ➔ ${f.to_airport}</td>
-                            <td class="p-3 font-mono text-xs">${f.flight_date}<div class="text-slate-400">${f.dep_time} - ${f.arr_time}</div></td>
-                            <td class="p-3">${totalSeats} 座<div class="text-xs text-sky-300 font-bold">NT$ ${Number(f.price || 0).toLocaleString()}</div></td>
+                        <tr class="border-b hover:bg-slate-50">
+                            <td class="p-3 font-bold text-cva-blue">${f.flightNo}</td>
+                            <td class="p-3">${f.aircraft}</td>
+                            <td class="p-3">${f.dep} ➔ ${f.arr}</td>
+                            <td class="p-3">${f.date} (${f.depTime})</td>
+                            <td class="p-3">NT$ ${Number(f.price).toLocaleString()}</td>
+                            <td class="p-3">${occupiedCount} / ${f.capacity || 24} 席</td>
                             <td class="p-3">
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${isSalesOpen ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}">
-                                    ${isSalesOpen ? '開放販售' : '暫停販售'}
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${f.isSelling ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}">
+                                    ${f.isSelling ? '販售中' : '已停售'}
                                 </span>
                             </td>
-                            <td class="p-3 text-right space-x-2">
-                                <button onclick="app.toggleFlightSales('${f.id}', ${isSalesOpen})" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300">${isSalesOpen ? '暫停' : '開放'}</button>
-                                <button onclick="app.deleteFlight('${f.id}')" class="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-xs text-rose-400">刪除</button>
+                            <td class="p-3 text-right space-x-1">
+                                <button onclick="toggleFlightSelling('${f.id}', ${!f.isSelling})" class="px-2 py-1 rounded bg-slate-200 hover:bg-slate-300 font-bold">
+                                    ${f.isSelling ? '停售' : '開放'}
+                                </button>
+                                <button onclick="deleteFlight('${f.id}')" class="px-2 py-1 rounded bg-red-100 text-red-600 hover:bg-red-200 font-bold">
+                                    刪除
+                                </button>
                             </td>
                         </tr>
                     `;
                 }).join('');
-            },
+            }
 
-            renderAdminBookingsTable: () => {
-                const tbody = document.getElementById('admin-bookings-table-body');
-                if (!tbody) return;
-
-                const q = (document.getElementById('admin-booking-search')?.value || '').trim().toLowerCase();
-                let list = window.state.bookings;
-
-                if (q) {
-                    list = list.filter(b => b.pnr?.toLowerCase().includes(q) || b.passenger_name?.toLowerCase().includes(q) || b.flight_no?.toLowerCase().includes(q));
-                }
-
-                if (list.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500">尚無符合條件的訂票記錄</td></tr>`;
-                    return;
-                }
-
-                tbody.innerHTML = list.map(b => `
-                    <tr>
-                        <td class="p-3 font-mono font-bold text-sky-400">${b.pnr}</td>
-                        <td class="p-3 font-bold text-white">${b.passenger_name}<div class="text-[10px] text-slate-400 font-normal">${b.gender} / ${b.nationality}</div></td>
-                        <td class="p-3 font-mono text-xs">${b.flight_no}</td>
-                        <td class="p-3 font-mono font-bold text-amber-400">${b.seat_number} <span class="text-xs text-slate-400 font-normal">(${b.cabin_class})</span></td>
-                        <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${b.status === 'CANCELLED' ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'}">${b.status || 'CONFIRMED'}</span></td>
-                        <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${b.checkin_status ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-300'}">${b.checkin_status ? '已報到' : '未報到'}</span></td>
-                        <td class="p-3 text-right">
-                            ${b.status !== 'CANCELLED' ? `<button onclick="app.cancelBookingAdmin('${b.id}')" class="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-xs text-rose-400">取消訂單</button>` : '<span class="text-slate-600 text-xs">已作廢</span>'}
+            const bookingTbody = document.getElementById('admin-booking-table-body');
+            if (!bookingsData.length) {
+                bookingTbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">尚無旅客訂位紀錄。</td></tr>`;
+            } else {
+                bookingTbody.innerHTML = bookingsData.map(b => `
+                    <tr class="border-b hover:bg-slate-50">
+                        <td class="p-3 font-mono font-bold text-cva-gold">${b.pnr}</td>
+                        <td class="p-3 font-bold text-slate-800">${b.name}</td>
+                        <td class="p-3">${b.flightNo} (${b.dep}➔${b.arr})</td>
+                        <td class="p-3">${b.seat} (${b.cabin})</td>
+                        <td class="p-3 text-[10px] text-slate-400">${new Date(b.createdAt).toLocaleString()}</td>
+                        <td class="p-3">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${b.isCheckedIn ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
+                                ${b.isCheckedIn ? '已 Check-in' : '未報到'}
+                            </span>
                         </td>
-                    </tr>
-                `).join('');
-            },
-
-            cancelBookingAdmin: async (bookingId) => {
-                if (!auth.currentUser) return;
-                if (!confirm("確定要取消此筆訂單並釋放座位？")) return;
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'bookings', bookingId);
-                await updateDoc(docRef, { status: 'CANCELLED' });
-                app.showToast("已取消訂單。");
-            },
-
-            renderAdminCheckinCounterCards: () => {
-                const container = document.getElementById('admin-checkin-counter-cards');
-                if (!container) return;
-
-                if (window.state.flights.length === 0) {
-                    container.innerHTML = `<div class="col-span-full text-slate-500 text-sm">目前資料庫尚無航班。</div>`;
-                    return;
-                }
-
-                container.innerHTML = window.state.flights.map(f => {
-                    const isOpen = f.checkin_open !== false;
-                    const flightBookings = window.state.bookings.filter(b => b.flight_id === f.id && b.status !== 'CANCELLED');
-                    const checkedInCount = flightBookings.filter(b => b.checkin_status === true).length;
-                    const rate = flightBookings.length > 0 ? Math.round((checkedInCount / flightBookings.length) * 100) : 0;
-
-                    return `
-                        <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 space-y-3">
-                            <div class="flex justify-between items-center">
-                                <span class="font-mono font-bold text-sky-400 text-base">${f.flight_no}</span>
-                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${isOpen ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}">${isOpen ? '開放 Check-in' : '已關櫃'}</span>
-                            </div>
-                            <div class="text-xs text-slate-300">${f.from_airport} ➔ ${f.to_airport}</div>
-                            <div class="flex justify-between items-center text-xs text-slate-400 pt-1 border-t border-slate-700/60">
-                                <span>報到人數: <strong class="text-white">${checkedInCount} / ${flightBookings.length}</strong></span>
-                                <span class="font-bold text-sky-300">${rate}%</span>
-                            </div>
-                            <button onclick="app.toggleCheckInCounter('${f.id}', ${isOpen})" class="w-full py-2 rounded-xl font-bold text-xs transition ${isOpen ? 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300' : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300'}">
-                                ${isOpen ? '關閉此航班 Check-in 櫃檯' : '開放 Check-in 報到櫃檯'}
-                            </button>
-                        </div>
-                    `;
-                }).join('');
-            },
-
-            toggleCheckInCounter: async (flightId, currentStatus) => {
-                if (!auth.currentUser) return;
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'flights', flightId);
-                await updateDoc(docRef, { checkin_open: !currentStatus });
-                app.showToast("已更動 Check-in 櫃檯開放狀態！", "fa-toggle-on");
-            },
-
-            renderAdminCheckinTable: () => {
-                const tbody = document.getElementById('admin-checkin-table-body');
-                if (!tbody) return;
-
-                if (window.state.bookings.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500">尚無搭機名冊資料</td></tr>`;
-                    return;
-                }
-
-                tbody.innerHTML = window.state.bookings.map(b => `
-                    <tr>
-                        <td class="p-3"><strong class="text-white block">${b.passenger_name}</strong><span class="text-xs text-sky-400 font-mono">${b.pnr}</span></td>
-                        <td class="p-3 font-mono text-xs">${b.flight_no}</td>
-                        <td class="p-3"><span class="font-mono text-amber-400 font-bold">${b.seat_number}</span> / Gate ${b.gate || 'A7'}</td>
-                        <td class="p-3 font-mono text-xs text-slate-400">${b.boarding_pass_no || '未產生'}</td>
-                        <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${b.checkin_status ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-300'}">${b.checkin_status ? '已完成報到' : '未報到'}</span></td>
                         <td class="p-3 text-right">
-                            ${!b.checkin_status ? `<button onclick="app.confirmCheckIn('${b.id}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 text-xs font-bold">手動協助 Check-in</button>` : '<span class="text-emerald-400 text-xs">已報到</span>'}
+                            <button onclick="cancelBooking('${b.id}', '${b.flightId}', '${b.seat}')" class="px-2 py-1 rounded bg-red-100 text-red-600 hover:bg-red-200 font-bold">
+                                退訂
+                            </button>
                         </td>
                     </tr>
                 `).join('');
             }
+
+            const checkinControlTbody = document.getElementById('admin-checkin-control-table');
+            if (!flightsData.length) {
+                checkinControlTbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">無航班資料。</td></tr>`;
+            } else {
+                checkinControlTbody.innerHTML = flightsData.map(f => {
+                    const flightBookings = bookingsData.filter(b => b.flightId === f.id);
+                    const checkedIn = flightBookings.filter(b => b.isCheckedIn).length;
+                    const totalBooked = flightBookings.length;
+                    const rate = totalBooked > 0 ? Math.round((checkedIn / totalBooked) * 100) : 0;
+                    const isOpen = f.isCheckinOpen !== false;
+
+                    return `
+                        <tr class="border-b hover:bg-slate-50">
+                            <td class="p-3 font-bold text-cva-blue">${f.flightNo}</td>
+                            <td class="p-3 font-bold">${f.gate}</td>
+                            <td class="p-3">${f.depTime}</td>
+                            <td class="p-3">${totalBooked} 人訂票 / ${checkedIn} 人已報到</td>
+                            <td class="p-3 font-bold text-emerald-600">${rate}%</td>
+                            <td class="p-3">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isOpen ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">
+                                    ${isOpen ? '開放 Check-in 中' : '已關櫃 (Close)'}
+                                </span>
+                            </td>
+                            <td class="p-3 text-right">
+                                <button onclick="toggleCheckinOpen('${f.id}', ${!isOpen})" class="px-3 py-1 rounded text-xs font-bold ${isOpen ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'}">
+                                    ${isOpen ? '關閉報到櫃檯' : '開放報到櫃檯'}
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        // --- 管理員操作功能 ---
+        window.toggleAddFlightModal = function(show) {
+            document.getElementById('add-flight-modal').classList.toggle('hidden', !show);
         };
 
-        window.onload = function() {
-            initAuth();
-            app.navigate('home');
+        window.handleCreateFlight = async function(e) {
+            e.preventDefault();
+            const flightId = `fl_${Date.now()}`;
+            const newFlight = {
+                id: flightId,
+                flightNo: document.getElementById('m-flight-no').value.trim().toUpperCase(),
+                aircraft: document.getElementById('m-aircraft').value.trim(),
+                dep: document.getElementById('m-dep').value.trim(),
+                arr: document.getElementById('m-arr').value.trim(),
+                date: document.getElementById('m-date').value,
+                depTime: document.getElementById('m-dep-time').value,
+                arrTime: document.getElementById('m-arr-time').value,
+                gate: document.getElementById('m-gate').value.trim().toUpperCase(),
+                price: Number(document.getElementById('m-price').value),
+                capacity: 24,
+                occupiedSeats: [],
+                isSelling: true,
+                isCheckinOpen: true,
+                status: '正常'
+            };
+
+            try {
+                const flightRef = doc(db, 'artifacts', appId, 'public', 'data', 'flights', flightId);
+                await setDoc(flightRef, newFlight);
+                toggleAddFlightModal(false);
+                showToast("全新虛擬航班發布成功", "success");
+            } catch (err) {
+                console.error(err);
+                showToast("發布失敗，請重試", "error");
+            }
         };
+
+        window.toggleFlightSelling = async function(flightId, isSelling) {
+            try {
+                const flightRef = doc(db, 'artifacts', appId, 'public', 'data', 'flights', flightId);
+                await updateDoc(flightRef, { isSelling: isSelling });
+                showToast("航班販售狀態已更新");
+            } catch (err) {
+                showToast("更新失敗", "error");
+            }
+        };
+
+        window.toggleCheckinOpen = async function(flightId, isOpen) {
+            try {
+                const flightRef = doc(db, 'artifacts', appId, 'public', 'data', 'flights', flightId);
+                await updateDoc(flightRef, { isCheckinOpen: isOpen });
+                showToast(`航班 Check-in 狀態已變更為：${isOpen ? '開放' : '關閉'}`);
+            } catch (err) {
+                showToast("操作失敗", "error");
+            }
+        };
+
+        window.deleteFlight = async function(flightId) {
+            try {
+                const flightRef = doc(db, 'artifacts', appId, 'public', 'data', 'flights', flightId);
+                await deleteDoc(flightRef);
+                showToast("航班已刪除");
+            } catch (err) {
+                showToast("刪除失敗", "error");
+            }
+        };
+
+        window.cancelBooking = async function(bookingId, flightId, seat) {
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', bookingId));
+
+                const flight = flightsData.find(f => f.id === flightId);
+                if (flight) {
+                    const updatedSeats = (flight.occupiedSeats || []).filter(s => s !== seat);
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'flights', flightId), {
+                        occupiedSeats: updatedSeats
+                    });
+                }
+                showToast("已退訂並釋放座位");
+            } catch (err) {
+                showToast("退訂失敗", "error");
+            }
+        };
+
     </script>
 </body>
 </html>
+
