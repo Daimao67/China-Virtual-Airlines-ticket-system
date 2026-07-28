@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>中華虛擬航空 China Virtual Airlines | 智慧訂票 & Check-in 系統</title>
+    <title>中華虛擬航空 China Virtual Airlines | 全網共通智慧訂票 & Check-in 系統</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome icons -->
@@ -115,9 +115,11 @@
                     <i class="fa-solid fa-plane-departure text-[300px]"></i>
                 </div>
                 <div class="relative z-10 max-w-2xl space-y-4">
-                    <span class="inline-block bg-cva-gold/20 text-cva-gold border border-cva-gold/30 text-xs px-3 py-1 rounded-full font-semibold uppercase tracking-wider">即時雲端數據連線</span>
+                    <span class="inline-flex items-center space-x-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs px-3 py-1 rounded-full font-semibold uppercase tracking-wider">
+                        <span class="w-2 h-2 bg-emerald-400 rounded-full animate-ping mr-1"></span> 全網共通雲端資料庫已連線
+                    </span>
                     <h1 class="text-3xl sm:text-5xl font-black leading-tight">致敬飛行熱情<br>智慧一體化 Virtual Flight</h1>
-                    <p class="text-slate-300 text-sm sm:text-base">中華虛擬航空（CVA）提供即時訂票、線上自動劃位鎖定與零等待 Check-in 服務，感受無縫式的虛擬航空旅程。</p>
+                    <p class="text-slate-300 text-sm sm:text-base">中華虛擬航空（CVA）提供全網即時同步劃位、線上訂票與雲端 Check-in 服務，感受無縫式的虛擬航空旅程。</p>
                     <div class="pt-4 flex flex-wrap gap-4">
                         <button onclick="switchTab('search')" class="bg-cva-gold text-cva-blue font-bold px-6 py-3 rounded-xl shadow-lg hover:bg-yellow-400 transition flex items-center space-x-2">
                             <i class="fa-solid fa-magnifying-glass"></i><span>立即搜尋航班</span>
@@ -179,7 +181,7 @@
                                 <span>劃位與報到安全升級提醒</span>
                                 <span class="text-xs text-slate-400">2026-07-25</span>
                             </div>
-                            <p>系統已啟用雲端即時防鎖死機制，若未預訂機票請勿嘗試辦理 Check-in，每張機票限報到乙次。</p>
+                            <p>系統已啟用全網雲端即時鎖死機制，若未預訂機票請勿嘗試辦理 Check-in，每張機票限報到乙次。</p>
                         </div>
                     </div>
                 </div>
@@ -190,7 +192,7 @@
                         <i class="fa-solid fa-clock text-cva-blue"></i><span>即時動態熱門航班</span>
                     </h2>
                     <div id="home-flight-preview" class="space-y-3">
-                        <div class="text-center py-8 text-slate-400 text-sm">載入雲端航班中...</div>
+                        <div class="text-center py-8 text-slate-400 text-sm">同步雲端航班中...</div>
                     </div>
                 </div>
             </div>
@@ -207,15 +209,15 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-1">出發機場</label>
-                            <input type="text" id="search-dep" placeholder="例：RCTP / 台北桃園" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-cva-blue focus:outline-none">
+                            <input type="text" id="search-dep" placeholder="例：RCTP / 台北桃園" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-cva-blue focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-1">抵達機場</label>
-                            <input type="text" id="search-arr" placeholder="例：RJTT / 東京羽田" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-cva-blue focus:outline-none">
+                            <input type="text" id="search-arr" placeholder="例：RJTT / 東京羽田" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-cva-blue focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-1">出發日期</label>
-                            <input type="date" id="search-date" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-cva-blue focus:outline-none">
+                            <input type="date" id="search-date" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-cva-blue focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-1">艙等</label>
@@ -240,7 +242,7 @@
                     <i class="fa-solid fa-list-check"></i><span>對應航班列表</span>
                 </h3>
                 <div id="flight-results-container" class="space-y-4">
-                    <div class="bg-white rounded-xl p-8 text-center text-slate-400">請設定條件點擊搜尋，或等候系統資料庫同步...</div>
+                    <div class="bg-white rounded-xl p-8 text-center text-slate-400">請設定條件點擊搜尋，或等候系統雲端資料庫同步...</div>
                 </div>
             </div>
         </section>
@@ -291,7 +293,7 @@
                     <div class="flex flex-wrap gap-4 text-xs font-medium justify-center py-2">
                         <div class="flex items-center space-x-1.5"><span class="w-4 h-4 bg-slate-200 border border-slate-400 rounded"></span><span>可選擇</span></div>
                         <div class="flex items-center space-x-1.5"><span class="w-4 h-4 bg-blue-600 rounded"></span><span>目前指定</span></div>
-                        <div class="flex items-center space-x-1.5"><span class="w-4 h-4 bg-red-500 rounded"></span><span>已售出/保留</span></div>
+                        <div class="flex items-center space-x-1.5"><span class="w-4 h-4 bg-red-500 rounded"></span><span>已售出/全網鎖定</span></div>
                     </div>
 
                     <!-- 座位圖本體 -->
@@ -332,7 +334,7 @@
                         <input type="text" id="query-pnr" maxlength="6" placeholder="例：CVA8X2" required class="w-full px-4 py-2.5 uppercase rounded-xl border border-slate-300 focus:ring-2 focus:ring-cva-blue focus:outline-none">
                     </div>
                     <button type="submit" class="w-full bg-cva-blue text-white font-bold py-3 rounded-xl shadow-md hover:bg-slate-800 transition">
-                        查詢訂票紀錄
+                        查詢雲端訂票紀錄
                     </button>
                 </form>
             </div>
@@ -447,7 +449,7 @@
                                 </tr>
                             </thead>
                             <tbody id="admin-flight-table-body">
-                                <tr><td colspan="8" class="p-4 text-center text-slate-400">載入中...</td></tr>
+                                <tr><td colspan="8" class="p-4 text-center text-slate-400">載入雲端資料中...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -472,7 +474,7 @@
                                 </tr>
                             </thead>
                             <tbody id="admin-booking-table-body">
-                                <tr><td colspan="7" class="p-4 text-center text-slate-400">載入中...</td></tr>
+                                <tr><td colspan="7" class="p-4 text-center text-slate-400">載入雲端資料中...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -520,7 +522,7 @@
                                 </tr>
                             </thead>
                             <tbody id="admin-checkin-control-table">
-                                <tr><td colspan="7" class="p-4 text-center text-slate-400">載入中...</td></tr>
+                                <tr><td colspan="7" class="p-4 text-center text-slate-400">載入雲端資料中...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -613,7 +615,7 @@
             <div class="flex items-center space-x-2">
                 <i class="fa-solid fa-plane text-cva-gold"></i>
                 <span class="font-bold">中華虛擬航空 (China Virtual Airlines)</span>
-                <span class="text-slate-400">| 虛擬飛行模擬專用</span>
+                <span class="text-slate-400">| 全網共通雲端模式</span>
             </div>
             <div class="text-slate-400">
                 本網站僅供模擬飛行樂趣使用，所有航班資訊均為虛擬數據。
@@ -635,12 +637,10 @@
             collection, 
             doc, 
             setDoc, 
-            getDoc, 
             getDocs, 
             onSnapshot, 
             updateDoc, 
-            deleteDoc,
-            query 
+            deleteDoc 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Firebase 初始化與全域變數配置
@@ -655,7 +655,9 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'cva-system-default';
+        
+        // 全網統一使用的應用程式識別碼，確保跨電腦與手機共享同一資料路徑
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'cva-system-global-shared';
 
         // 應用程式狀態 (State)
         let currentUser = null;
@@ -686,23 +688,30 @@
             }
         });
 
-        // 實時監聽資料庫
+        // 實時監聽全網雲端資料庫
         function setupRealtimeListeners() {
             if (!currentUser) return;
 
-            // 1. 航班資料監聽 (Public Data)
+            // 1. 航班資料全網監聽 (Public Data)
             const flightsRef = collection(db, 'artifacts', appId, 'public', 'data', 'flights');
-            onSnapshot(flightsRef, (snapshot) => {
+            onSnapshot(flightsRef, async (snapshot) => {
                 flightsData = [];
                 snapshot.forEach(doc => {
                     flightsData.push({ id: doc.id, ...doc.data() });
                 });
+
+                // 若雲端完全無航班，自動為全網寫入預設航線
+                if (flightsData.length === 0) {
+                    await bootstrapDefaultFlights();
+                    return;
+                }
+
                 renderFlights();
                 renderHomeFlightPreview();
                 renderAdminTables();
-            }, (error) => showToast("航班資料庫同步失敗", "error"));
+            }, (error) => showToast("航班雲端資料同步失敗", "error"));
 
-            // 2. 訂單資料監聽 (Public Data)
+            // 2. 訂單資料全網監聽 (Public Data)
             const bookingsRef = collection(db, 'artifacts', appId, 'public', 'data', 'bookings');
             onSnapshot(bookingsRef, (snapshot) => {
                 bookingsData = [];
@@ -710,7 +719,70 @@
                     bookingsData.push({ id: doc.id, ...doc.data() });
                 });
                 renderAdminTables();
-            }, (error) => showToast("訂單資料庫同步失敗", "error"));
+            }, (error) => showToast("訂單雲端資料同步失敗", "error"));
+        }
+
+        // 自動寫入全網初始化預設航班 (首次啟動時執行)
+        async function bootstrapDefaultFlights() {
+            const today = new Date().toISOString().split('T')[0];
+            const defaultFlights = [
+                {
+                    id: "fl_cva100",
+                    flightNo: "CI100",
+                    aircraft: "Airbus A350-900",
+                    dep: "RCTP / 台北桃園",
+                    arr: "RJTT / 東京羽田",
+                    date: today,
+                    depTime: "08:50",
+                    arrTime: "12:55",
+                    gate: "A9",
+                    price: 13800,
+                    capacity: 24,
+                    occupiedSeats: [],
+                    isSelling: true,
+                    isCheckinOpen: true,
+                    status: "正常"
+                },
+                {
+                    id: "fl_cva006",
+                    flightNo: "CI006",
+                    aircraft: "Boeing 777-300ER",
+                    dep: "RCTP / 台北桃園",
+                    arr: "KLAX / 洛杉磯",
+                    date: today,
+                    depTime: "17:10",
+                    arrTime: "14:20",
+                    gate: "D5",
+                    price: 36500,
+                    capacity: 24,
+                    occupiedSeats: [],
+                    isSelling: true,
+                    isCheckinOpen: true,
+                    status: "正常"
+                },
+                {
+                    id: "fl_cva501",
+                    flightNo: "CI501",
+                    aircraft: "Airbus A330-300",
+                    dep: "RCTP / 台北桃園",
+                    arr: "ZSPD / 上海浦東",
+                    date: today,
+                    depTime: "09:05",
+                    arrTime: "11:15",
+                    gate: "B4",
+                    price: 9200,
+                    capacity: 24,
+                    occupiedSeats: [],
+                    isSelling: true,
+                    isCheckinOpen: true,
+                    status: "正常"
+                }
+            ];
+
+            for (const f of defaultFlights) {
+                const flightRef = doc(db, 'artifacts', appId, 'public', 'data', 'flights', f.id);
+                await setDoc(flightRef, f);
+            }
         }
 
         // --- Toast 提示功能 ---
@@ -898,7 +970,7 @@
             document.getElementById('selected-seat-display').innerText = `已選座位：${seatId}`;
         };
 
-        // --- 提交訂票與產生 PNR ---
+        // --- 提交訂票與產生 PNR (即時全網鎖定) ---
         window.submitBooking = async function() {
             const name = document.getElementById('passenger-name').value.trim().toUpperCase();
             const gender = document.getElementById('passenger-gender').value;
@@ -933,9 +1005,11 @@
             };
 
             try {
+                // 將訂單寫入全網共享公共集合
                 const bookingRef = doc(db, 'artifacts', appId, 'public', 'data', 'bookings', bookingId);
                 await setDoc(bookingRef, newBooking);
 
+                // 即時寫入雲端座位鎖定
                 const flightRef = doc(db, 'artifacts', appId, 'public', 'data', 'flights', selectedFlightForBooking.id);
                 const updatedSeats = [...(selectedFlightForBooking.occupiedSeats || []), currentSelectedSeat];
                 await updateDoc(flightRef, { occupiedSeats: updatedSeats });
@@ -953,7 +1027,7 @@
             }
         };
 
-        // --- 查詢我的訂單 ---
+        // --- 查詢我的訂單 (全網雲端搜尋) ---
         window.handleQueryOrder = function(e) {
             e.preventDefault();
             const name = document.getElementById('query-name').value.trim().toUpperCase();
@@ -967,7 +1041,7 @@
 
             if (!found) {
                 card.classList.add('hidden');
-                showToast("查無符合之訂購紀錄，請確認姓名與 PNR", "error");
+                showToast("全網雲端資料庫查無符合紀錄，請確認姓名與 PNR", "error");
                 return;
             }
 
@@ -1351,7 +1425,7 @@
                 const flightRef = doc(db, 'artifacts', appId, 'public', 'data', 'flights', flightId);
                 await setDoc(flightRef, newFlight);
                 toggleAddFlightModal(false);
-                showToast("全新虛擬航班發布成功", "success");
+                showToast("全新虛擬航班已寫入雲端並發布", "success");
             } catch (err) {
                 console.error(err);
                 showToast("發布失敗，請重試", "error");
